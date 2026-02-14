@@ -45,6 +45,7 @@ export async function POST(request: Request) {
         const url = `/uploads/${filename}`;
         return NextResponse.json({ url, filename }, { status: 201 });
     } catch (error) {
+        console.error("Upload error:", error);
         const message = error instanceof Error ? error.message : "Lỗi upload";
         return NextResponse.json({ error: message }, { status: 500 });
     }

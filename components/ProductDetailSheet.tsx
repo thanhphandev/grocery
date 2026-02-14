@@ -299,16 +299,7 @@ export function ProductDetailSheet({
                         </div>
 
                         <div className="px-5 pb-8 pt-1 overflow-y-auto max-h-[calc(90vh-40px)]">
-                            {/* Product image — view mode only (edit mode has its own) */}
-                            {!isEditing && product.image && (
-                                <div className="mb-4 rounded-2xl overflow-hidden bg-muted">
-                                    <img
-                                        src={product.image}
-                                        alt={product.name}
-                                        className="w-full h-48 object-cover"
-                                    />
-                                </div>
-                            )}
+
 
                             <AnimatePresence mode="wait">
                                 {isEditing ? (
@@ -541,26 +532,48 @@ export function ProductDetailSheet({
                                         exit={{ opacity: 0, x: 20 }}
                                         transition={{ duration: 0.2 }}
                                     >
-                                        <h2 className="text-xl font-bold text-foreground pr-24 mb-3 leading-tight">
-                                            {product.name}
-                                        </h2>
-
-                                        <div className="flex items-center gap-2 mb-5 flex-wrap">
-                                            <Badge variant="outline" className="gap-1 py-1">
-                                                <Package className="w-3 h-3" />
-                                                {product.unit}
-                                            </Badge>
-                                            {hasLocation && (
-                                                <Badge variant="secondary" className="gap-1 py-1">
-                                                    <MapPin className="w-3 h-3 text-primary" />
-                                                    {product.location}
-                                                </Badge>
+                                        {/* Compact Header: Image + Title */}
+                                        <div className="flex gap-4 mb-5">
+                                            {product.image && (
+                                                <motion.div
+                                                    initial={{ scale: 0.9, opacity: 0 }}
+                                                    animate={{ scale: 1, opacity: 1 }}
+                                                    className="w-24 h-24 shrink-0 rounded-2xl overflow-hidden bg-muted border border-border/50 shadow-sm"
+                                                >
+                                                    <img
+                                                        src={product.image}
+                                                        alt={product.name}
+                                                        className="w-full h-full object-cover"
+                                                        loading="lazy"
+                                                    />
+                                                </motion.div>
                                             )}
+
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <h2 className="text-xl font-bold text-foreground leading-tight line-clamp-2 mb-2">
+                                                    {product.name}
+                                                </h2>
+
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <Badge variant="outline" className="gap-1 px-2 py-0.5 h-6 text-xs font-medium">
+                                                        <Package className="w-3 h-3 text-muted-foreground" />
+                                                        {product.unit}
+                                                    </Badge>
+                                                    {hasLocation && (
+                                                        <Badge variant="secondary" className="gap-1 px-2 py-0.5 h-6 text-xs font-medium">
+                                                            <MapPin className="w-3 h-3 text-primary" />
+                                                            {product.location}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {/* Price section */}
-                                        <div className="rounded-2xl bg-muted/40 p-5 mb-5">
-                                            <div className="flex items-end justify-between mb-4">
+                                        <div className="rounded-2xl bg-muted/40 p-5 mb-5 relative overflow-hidden group">
+                                            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+
+                                            <div className="flex items-end justify-between mb-4 relative z-10">
                                                 <div>
                                                     <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-muted-foreground/70 block mb-1">
                                                         Giá bán lẻ
@@ -574,9 +587,9 @@ export function ProductDetailSheet({
                                                 </div>
                                             </div>
 
-                                            <Separator className="mb-4 bg-border/50" />
+                                            <Separator className="mb-4 bg-border/50 relative z-10" />
 
-                                            <div className="flex items-end justify-between">
+                                            <div className="flex items-end justify-between relative z-10">
                                                 <div>
                                                     <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-muted-foreground/70 block mb-1">
                                                         Giá sỉ
@@ -589,8 +602,8 @@ export function ProductDetailSheet({
                                                     </div>
                                                 </div>
                                                 {savingAmount > 0 && (
-                                                    <Badge className="bg-success/10 text-success border-success/20 font-semibold">
-                                                        Tiết kiệm {savingPercent}% (−{formatPrice(savingAmount)}đ)
+                                                    <Badge className="bg-success/10 text-success border-success/20 font-semibold shadow-none">
+                                                        Tiết kiệm {savingPercent}%
                                                     </Badge>
                                                 )}
                                             </div>
