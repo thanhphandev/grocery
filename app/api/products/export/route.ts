@@ -1,47 +1,56 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { ProductModel } from "@/lib/models/Product";
 import { connectDB } from "@/lib/mongodb";
 
 // GET /api/products/export — Export all products as CSV
 export async function GET() {
-  try {
-    await connectDB();
+    try {
+        const session = await auth.api.getSession({
+            headers: await headers(),
+        });
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-    const products = await ProductModel.find()
-      .sort({ name: 1 })
-      .select("barcode name prices.retail prices.wholesale unit location image")
-      .lean();
+        await connectDB();
 
-    // CSV header
-    const header =
-      "Mã vạch,Tên sản phẩm,Giá lẻ,Giá sỉ,Đơn vị,Vị trí kệ,Ảnh URL";
+        const products = await ProductModel.find()
+            .sort({ name: 1 })
+            .select("barcode name prices.retail prices.wholesale unit location image")
+            .lean();
 
-    const rows = products.map((p) => {
-      const barcode = p.barcode || "";
-      const name = `"${(p.name || "").replace(/"/g, '""')}"`;
-      const retail = p.prices?.retail || 0;
-      const wholesale = p.prices?.wholesale || 0;
-      const unit = p.unit || "";
-      const location = p.location || "";
-      const image = p.image || "";
-      return `${barcode},${name},${retail},${wholesale},${unit},${location},${image}`;
-    });
+        // CSV header
+        const header =
+            "Mã vạch,Tên sản phẩm,Giá lẻ,Giá sỉ,Đơn vị,Vị trí kệ,Ảnh URL";
 
-    const csv = [header, ...rows].join("\n");
+        const rows = products.map((p) => {
+            const barcode = p.barcode || "";
+            const name = `"${(p.name || "").replace(/"/g, '""')}"`;
+            const retail = p.prices?.retail || 0;
+            const wholesale = p.prices?.wholesale || 0;
+            const unit = p.unit || "";
+            const location = p.location || "";
+            const image = p.image || "";
+            return `${barcode},${name},${retail},${wholesale},${unit},${location},${image}`;
+        });
 
-    // BOM for Excel UTF-8 support
-    const bom = "\uFEFF";
+        const csv = [header, ...rows].join("\n");
 
-    return new NextResponse(bom + csv, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="san-pham-${Date.now()}.csv"`,
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Lỗi server";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+        // BOM for Excel UTF-8 support
+        const bom = "\uFEFF";
+
+        return new NextResponse(bom + csv, {
+            status: 200,
+            headers: {
+                "Content-Type": "text/csv; charset=utf-8",
+                "Content-Disposition": `attachment; filename="san-pham-${Date.now()}.csv"`,
+                "Cache-Control": "no-store",
+            },
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Lỗi server";
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
 }

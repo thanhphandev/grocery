@@ -36,7 +36,6 @@ import {
 } from "@/lib/search";
 import type { Product } from "@/lib/types";
 
-// ... (Theme logic unchanged)
 type ThemeMode = "light" | "dark" | "system";
 
 function applyTheme(mode: ThemeMode) {
@@ -240,10 +239,6 @@ export default function Home() {
     refresh();
   }, [refresh]);
 
-  // Pull to refresh
-  const handlePullRefresh = useCallback(() => {
-    refresh();
-  }, [refresh]);
 
   // Render
   return (
@@ -307,11 +302,10 @@ export default function Home() {
                   <button
                     key={opt.id}
                     onClick={() => setSortBy(opt.id)}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${
-                      active
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${active
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
                         : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
-                    }`}
+                      }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                     {opt.label}

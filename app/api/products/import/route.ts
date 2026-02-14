@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { ProductModel } from "@/lib/models/Product";
 import { connectDB } from "@/lib/mongodb";
 import { buildSearchSlug } from "@/lib/utils";
@@ -6,6 +8,13 @@ import { buildSearchSlug } from "@/lib/utils";
 // POST /api/products/import — Bulk import products from CSV
 export async function POST(request: Request) {
   try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
 
     const text = await request.text();
