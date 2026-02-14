@@ -138,10 +138,15 @@ export default function Home() {
     enabled: !isScannerOpen && !isQuickAddOpen,
   });
 
-  const handleProductClick = (product: Product) => {
+  const handleProductClick = useCallback((product: Product) => {
     setSelectedProduct(product);
     setIsDetailOpen(true);
-  };
+  }, []);
+
+  const handleDeleteProduct = useCallback(async (barcode: string) => {
+    await deleteProduct(barcode);
+    refresh();
+  }, [refresh]);
 
   const openScanner = () => setIsScannerOpen(true);
 
@@ -286,15 +291,12 @@ export default function Home() {
                 <div className="flex flex-col gap-3">
                   {results.map((product, index) => (
                     <ProductCard
-                      key={product.id || product.barcode}
+                      key={product.barcode}
                       product={product}
                       index={index}
                       onClick={() => handleProductClick(product)}
                       isScanned={product.barcode === scannedBarcode}
-                      onDelete={async (barcode) => {
-                        await deleteProduct(barcode);
-                        refresh();
-                      }}
+                      onDelete={handleDeleteProduct}
                     />
                   ))}
                 </div>

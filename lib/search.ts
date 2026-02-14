@@ -14,33 +14,89 @@ export function generateSearchSlug(name: string, barcode: string): string {
     return `${removeVietnameseTones(name)} ${barcode}`;
 }
 
-// ─── SEARCH ──────────────────────────────────────────────
+// ─── SEARCH (OPTIMIZED) ─────────────────────────────────
+
+// In-memory search cache for instant results
+let _cachedProducts: Product[] | null = null;
+let _cacheTimestamp = 0;
+const CACHE_TTL = 5000; // 5 seconds
+
+async function getProductsFromCache(): Promise<Product[]> {
+    const now = Date.now();
+    if (_cachedProducts && now - _cacheTimestamp < CACHE_TTL) {
+        return _cachedProducts;
+    }
+    _cachedProducts = await db.products.toArray();
+    _cacheTimestamp = now;
+    return _cachedProducts;
+}
+
+export function invalidateCache(): void {
+    _cachedProducts = null;
+    _cacheTimestamp = 0;
+}
 
 export async function fastSearch(query: string): Promise<Product[]> {
-    if (!query.trim()) {
-        return db.products.orderBy("updatedAt").reverse().limit(50).toArray();
+    const trimmed = query.trim();
+
+    // Empty query: show recent 30
+    if (!trimmed) {
+        return db.products.orderBy("updatedAt").reverse().limit(30).toArray();
     }
 
-    const normalizedQuery = removeVietnameseTones(query);
+    // Pure barcode number: instant indexed lookup
+    if (/^\d{4,}$/.test(trimmed)) {
+        const exact = await db.products.where("barcode").equals(trimmed).first();
+        if (exact) return [exact];
 
-    if (/^\d+$/.test(query.trim())) {
-        const exactMatch = await db.products
-            .where("barcode")
-            .equals(query.trim())
-            .toArray();
-        if (exactMatch.length > 0) return exactMatch;
+        // Partial barcode match
+        const products = await getProductsFromCache();
+        return products
+            .filter((p) => p.barcode.includes(trimmed))
+            .slice(0, 20);
     }
 
-    const allProducts = await db.products.toArray();
-    const results = allProducts.filter((p) =>
-        p.searchSlug.includes(normalizedQuery)
-    );
+    // Text search: use cached products for speed
+    const normalizedQuery = removeVietnameseTones(trimmed);
+    const words = normalizedQuery.split(/\s+/).filter(Boolean);
+    const products = await getProductsFromCache();
 
-    return results.sort((a, b) => {
-        const aStarts = a.searchSlug.startsWith(normalizedQuery) ? 0 : 1;
-        const bStarts = b.searchSlug.startsWith(normalizedQuery) ? 0 : 1;
-        return aStarts - bStarts;
-    });
+    // Score-based ranking
+    const scored: { product: Product; score: number }[] = [];
+
+    for (const p of products) {
+        let score = 0;
+
+        // Exact slug match
+        if (p.searchSlug.includes(normalizedQuery)) {
+            score += 10;
+        }
+
+        // Starts with bonus
+        if (p.searchSlug.startsWith(normalizedQuery)) {
+            score += 20;
+        }
+
+        // Multi-word: all words must match
+        if (words.length > 1) {
+            const allMatch = words.every((w) => p.searchSlug.includes(w));
+            if (allMatch) score += 15;
+            else if (score === 0) continue;
+        }
+
+        // Barcode contains
+        if (p.barcode.includes(trimmed)) {
+            score += 5;
+        }
+
+        if (score > 0) {
+            scored.push({ product: p, score });
+        }
+    }
+
+    // Sort by score descending, limit to 30
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 30).map((s) => s.product);
 }
 
 // ─── CRUD ────────────────────────────────────────────────
@@ -56,6 +112,7 @@ export async function addProduct(
     const id = await db.products.add(newProduct);
     const saved = { ...newProduct, id: id as number };
 
+    invalidateCache();
     syncProductToServer(saved).catch(() => { });
     return saved;
 }
@@ -75,11 +132,13 @@ export async function updateProduct(
             : {}),
     };
     await db.products.update(existing.id, updatedData);
+    invalidateCache();
     syncProductToServer({ ...existing, ...updatedData }).catch(() => { });
 }
 
 export async function deleteProduct(barcode: string): Promise<void> {
     await db.products.where("barcode").equals(barcode).delete();
+    invalidateCache();
     fetch(`/api/products/${barcode}`, { method: "DELETE" }).catch(() => { });
 }
 
@@ -106,6 +165,7 @@ export async function getProductByBarcode(
                     updatedAt: p.updatedAt,
                 };
                 await db.products.add(product);
+                invalidateCache();
                 return db.products.where("barcode").equals(barcode).first();
             }
         }
@@ -236,6 +296,7 @@ export async function fullSync(): Promise<{ pushed: number; pulled: number }> {
                         pulled++;
                     }
                 }
+                invalidateCache();
             }
         }
     } catch {

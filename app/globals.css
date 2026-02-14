@@ -255,3 +255,20 @@
 .animate-pulse-ring {
   animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Lightweight card appear (replaces framer-motion stagger) */
+@keyframes card-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.flex-col>[data-card] {
+  animation: card-appear 0.2s ease-out both;
+}

@@ -1,15 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function ProductSkeleton({ index = 0 }: { index?: number }) {
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: index * 0.08 }}
+        <div
+            className="animate-pulse"
+            style={{ animationDelay: `${index * 50}ms` }}
         >
             <Card className="overflow-hidden border-border/30">
                 <CardContent className="p-4">
@@ -33,6 +31,6 @@ export function ProductSkeleton({ index = 0 }: { index?: number }) {
                     <Skeleton className="h-4 w-20" />
                 </CardContent>
             </Card>
-        </motion.div>
+        </div>
     );
 }
