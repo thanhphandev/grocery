@@ -17,6 +17,7 @@ import {
     Camera,
     Image as ImageIcon,
 } from "lucide-react";
+import NextImage from "next/image";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -538,13 +539,14 @@ export function ProductDetailSheet({
                                                 <motion.div
                                                     initial={{ scale: 0.9, opacity: 0 }}
                                                     animate={{ scale: 1, opacity: 1 }}
-                                                    className="w-24 h-24 shrink-0 rounded-2xl overflow-hidden bg-muted border border-border/50 shadow-sm"
+                                                    className="w-24 h-24 shrink-0 rounded-2xl overflow-hidden bg-muted border border-border/50 shadow-sm relative"
                                                 >
-                                                    <img
+                                                    <NextImage
                                                         src={product.image}
                                                         alt={product.name}
-                                                        className="w-full h-full object-cover"
-                                                        loading="lazy"
+                                                        fill
+                                                        className="object-cover"
+                                                        sizes="96px"
                                                     />
                                                 </motion.div>
                                             )}

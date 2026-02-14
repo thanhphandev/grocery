@@ -3,6 +3,7 @@
 import { memo, useState, useRef, useCallback } from "react";
 import { MapPin, Package, Copy, Check, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import NextImage from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Product } from "@/lib/types";
@@ -65,12 +66,13 @@ export const ProductCard = memo(function ProductCard({
                 <div className="flex">
                     {/* Product image thumbnail */}
                     {product.image && (
-                        <div className="w-20 shrink-0 bg-muted">
-                            <img
+                        <div className="w-20 shrink-0 bg-muted relative">
+                            <NextImage
                                 src={product.image}
                                 alt=""
-                                className="w-full h-full object-cover"
-                                loading="lazy"
+                                fill
+                                className="object-cover"
+                                sizes="80px"
                             />
                         </div>
                     )}
