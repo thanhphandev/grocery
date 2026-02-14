@@ -4,15 +4,15 @@ import { memo, useState, useRef, useCallback } from "react";
 import { MapPin, Package, Copy, Check, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Product } from "@/lib/db";
-import { formatPrice } from "@/lib/search";
+import type { Product } from "@/lib/types";
+import { formatPrice } from "@/lib/utils";
 
 interface ProductCardProps {
     product: Product;
     index: number;
     onClick?: () => void;
     isScanned?: boolean;
-    onDelete?: (barcode: string) => void;
+    onDelete?: (productId: string) => void;
 }
 
 export const ProductCard = memo(function ProductCard({
@@ -28,6 +28,7 @@ export const ProductCard = memo(function ProductCard({
 
     const copyBarcode = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
+        if (!product.barcode) return;
         navigator.clipboard.writeText(product.barcode);
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
@@ -35,20 +36,23 @@ export const ProductCard = memo(function ProductCard({
 
     const handleDelete = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
+        if (!product._id) return;
         if (showDelete) {
-            onDelete?.(product.barcode);
+            onDelete?.(product._id);
         } else {
             setShowDelete(true);
             if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
             deleteTimerRef.current = setTimeout(() => setShowDelete(false), 3000);
         }
-    }, [showDelete, onDelete, product.barcode]);
+    }, [showDelete, onDelete, product._id]);
+
+    const hasLocation = product.location && product.location.trim();
 
     return (
         <Card
             className={`group cursor-pointer overflow-hidden transition-shadow duration-150 hover:shadow-lg active:scale-[0.99] border-border/40 ${isScanned
-                    ? "ring-2 ring-primary shadow-lg glow-primary"
-                    : "hover:border-primary/30"
+                ? "ring-2 ring-primary shadow-lg glow-primary"
+                : "hover:border-primary/30"
                 }`}
             onClick={onClick}
             style={{
@@ -77,18 +81,20 @@ export const ProductCard = memo(function ProductCard({
                                     {product.name}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1.5">
-                                    <Badge
-                                        variant="secondary"
-                                        className="font-mono text-[11px] px-2 py-0.5 cursor-pointer hover:bg-primary/10 transition-colors"
-                                        onClick={copyBarcode}
-                                    >
-                                        {copied ? (
-                                            <Check className="w-3 h-3 mr-1 text-primary" />
-                                        ) : (
-                                            <Copy className="w-3 h-3 mr-1 opacity-50" />
-                                        )}
-                                        {product.barcode}
-                                    </Badge>
+                                    {product.barcode && (
+                                        <Badge
+                                            variant="secondary"
+                                            className="font-mono text-[11px] px-2 py-0.5 cursor-pointer hover:bg-primary/10 transition-colors"
+                                            onClick={copyBarcode}
+                                        >
+                                            {copied ? (
+                                                <Check className="w-3 h-3 mr-1 text-primary" />
+                                            ) : (
+                                                <Copy className="w-3 h-3 mr-1 opacity-50" />
+                                            )}
+                                            {product.barcode}
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
                             <Badge variant="outline" className="shrink-0 text-[11px] gap-1 py-1">
@@ -126,18 +132,22 @@ export const ProductCard = memo(function ProductCard({
 
                         {/* Location + Delete */}
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <MapPin className="w-3.5 h-3.5 text-primary/70" />
-                                <span className="font-medium">{product.location}</span>
-                            </div>
+                            {hasLocation ? (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <MapPin className="w-3.5 h-3.5 text-primary/70" />
+                                    <span className="font-medium">{product.location}</span>
+                                </div>
+                            ) : (
+                                <div />
+                            )}
 
                             {onDelete && (
                                 <button
                                     type="button"
                                     onClick={handleDelete}
                                     className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-all duration-150 ${showDelete
-                                            ? "bg-destructive text-white scale-105"
-                                            : "text-muted-foreground/40 hover:text-destructive/60"
+                                        ? "bg-destructive text-white scale-105"
+                                        : "text-muted-foreground/40 hover:text-destructive/60"
                                         }`}
                                 >
                                     <Trash2 className="w-3 h-3" />
@@ -152,7 +162,7 @@ export const ProductCard = memo(function ProductCard({
     );
 },
     (prev, next) =>
-        prev.product.barcode === next.product.barcode &&
+        prev.product._id === next.product._id &&
         prev.product.updatedAt === next.product.updatedAt &&
         prev.isScanned === next.isScanned &&
         prev.index === next.index

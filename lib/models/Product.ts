@@ -1,7 +1,7 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IProduct extends Document {
-    barcode: string;
+    barcode?: string;
     name: string;
     search_slug: string;
     prices: {
@@ -9,7 +9,7 @@ export interface IProduct extends Document {
         wholesale: number;
     };
     unit: string;
-    location: string;
+    location?: string;
     image?: string;
     updatedAt: number;
 }
@@ -18,8 +18,7 @@ const ProductSchema = new Schema<IProduct>(
     {
         barcode: {
             type: String,
-            required: true,
-            unique: true,
+            sparse: true,
             index: true,
         },
         name: {
@@ -42,7 +41,6 @@ const ProductSchema = new Schema<IProduct>(
         },
         location: {
             type: String,
-            default: "Chưa xác định",
         },
         image: String,
         updatedAt: {
@@ -57,7 +55,8 @@ const ProductSchema = new Schema<IProduct>(
     }
 );
 
-// Search slug text index for faster search
+// Compound text index for blazing-fast search
+ProductSchema.index({ search_slug: "text" });
 
 export const ProductModel: mongoose.Model<IProduct> =
     mongoose.models.Product || mongoose.model<IProduct>("Product", ProductSchema);

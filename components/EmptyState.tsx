@@ -1,16 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ScanBarcode, Search, Sparkles } from "lucide-react";
+import { ScanBarcode, Search, Sparkles, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
     query?: string;
     onScan?: () => void;
     onSearch?: () => void;
+    onAdd?: () => void;
 }
 
-export function EmptyState({ query, onScan, onSearch }: EmptyStateProps) {
+export function EmptyState({ query, onScan, onSearch, onAdd }: EmptyStateProps) {
     if (query) {
         return (
             <motion.div
@@ -32,6 +33,12 @@ export function EmptyState({ query, onScan, onSearch }: EmptyStateProps) {
                         <Button variant="outline" size="sm" onClick={onScan} className="gap-2">
                             <ScanBarcode className="w-4 h-4" />
                             Quét mã vạch
+                        </Button>
+                    )}
+                    {onAdd && (
+                        <Button size="sm" onClick={onAdd} className="gap-2">
+                            <Plus className="w-4 h-4" />
+                            Thêm mới
                         </Button>
                     )}
                 </div>
@@ -81,9 +88,19 @@ export function EmptyState({ query, onScan, onSearch }: EmptyStateProps) {
                         Bắt đầu quét
                     </Button>
                 )}
-                {onSearch && (
+                {onAdd && (
                     <Button
                         variant="outline"
+                        onClick={onAdd}
+                        className="gap-2 h-11 rounded-xl font-semibold"
+                    >
+                        <Plus className="w-4.5 h-4.5" />
+                        Thêm thủ công
+                    </Button>
+                )}
+                {onSearch && (
+                    <Button
+                        variant="ghost"
                         onClick={onSearch}
                         className="gap-2 h-11 rounded-xl font-semibold"
                     >

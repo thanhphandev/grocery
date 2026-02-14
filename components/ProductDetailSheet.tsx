@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import type { Product } from "@/lib/db";
+import type { Product } from "@/lib/types";
 import {
     formatPrice,
     isFavorite,
@@ -56,6 +56,7 @@ export function ProductDetailSheet({
     const [editWholesale, setEditWholesale] = useState("");
     const [editUnit, setEditUnit] = useState("");
     const [editLocation, setEditLocation] = useState("");
+    const [editBarcode, setEditBarcode] = useState("");
     const [isSaving, setIsSaving] = useState(false);
 
     // Delete
@@ -69,9 +70,10 @@ export function ProductDetailSheet({
 
     useEffect(() => {
         if (product && isOpen) {
-            isFavorite(product.barcode).then(setFav);
+            if (product._id) {
+                isFavorite(product._id).then(setFav);
+            }
             addHistory(product);
-            // Reset edit state when opening
             setIsEditing(false);
             setDeleteConfirm(false);
         }
@@ -84,7 +86,8 @@ export function ProductDetailSheet({
             setEditRetail(String(product.prices.retail));
             setEditWholesale(String(product.prices.wholesale));
             setEditUnit(product.unit);
-            setEditLocation(product.location);
+            setEditLocation(product.location || "");
+            setEditBarcode(product.barcode || "");
         }
     }, [isEditing, product]);
 
@@ -99,14 +102,16 @@ export function ProductDetailSheet({
     if (!product) return null;
 
     const copyBarcode = () => {
+        if (!product.barcode) return;
         navigator.clipboard.writeText(product.barcode);
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
     };
 
     const handleToggleFav = async () => {
+        if (!product._id) return;
         setFavAnimating(true);
-        const result = await toggleFavorite(product.barcode);
+        const result = await toggleFavorite(product._id);
         setFav(result);
         setTimeout(() => setFavAnimating(false), 300);
     };
@@ -121,17 +126,18 @@ export function ProductDetailSheet({
     };
 
     const handleSave = async () => {
-        if (!editName.trim() || !editRetail.trim()) return;
+        if (!editName.trim() || !editRetail.trim() || !product._id) return;
         setIsSaving(true);
         try {
-            await updateProduct(product.barcode, {
+            await updateProduct(product._id, {
                 name: editName.trim(),
+                barcode: editBarcode.trim() || undefined,
                 prices: {
                     retail: Number(editRetail),
                     wholesale: Number(editWholesale) || Number(editRetail),
                 },
                 unit: editUnit,
-                location: editLocation.trim() || "Chưa xác định",
+                location: editLocation.trim() || undefined,
             });
             setIsEditing(false);
             onUpdated?.();
@@ -142,13 +148,14 @@ export function ProductDetailSheet({
     };
 
     const handleDelete = async () => {
+        if (!product._id) return;
         if (!deleteConfirm) {
             setDeleteConfirm(true);
             return;
         }
         setIsDeleting(true);
         try {
-            await deleteProduct(product.barcode);
+            await deleteProduct(product._id);
             onClose();
             onDeleted?.();
         } catch {
@@ -159,9 +166,11 @@ export function ProductDetailSheet({
     };
 
     const savingAmount = product.prices.retail - product.prices.wholesale;
-    const savingPercent = Math.round(
-        (savingAmount / product.prices.retail) * 100
-    );
+    const savingPercent = product.prices.retail > 0
+        ? Math.round((savingAmount / product.prices.retail) * 100)
+        : 0;
+
+    const hasLocation = product.location && product.location.trim();
 
     return (
         <AnimatePresence>
@@ -260,7 +269,7 @@ export function ProductDetailSheet({
                                         {/* Name */}
                                         <div>
                                             <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                                                Tên sản phẩm
+                                                Tên sản phẩm *
                                             </label>
                                             <Input
                                                 value={editName}
@@ -270,11 +279,26 @@ export function ProductDetailSheet({
                                             />
                                         </div>
 
+                                        {/* Barcode (editable) */}
+                                        <div>
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                                                <Barcode className="w-3 h-3 inline mr-1 -mt-0.5" />
+                                                Mã vạch (tùy chọn)
+                                            </label>
+                                            <Input
+                                                value={editBarcode}
+                                                onChange={(e) => setEditBarcode(e.target.value)}
+                                                className="h-11 rounded-xl font-mono"
+                                                placeholder="Để trống nếu không có"
+                                                inputMode="numeric"
+                                            />
+                                        </div>
+
                                         {/* Prices */}
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                                                    Giá lẻ (đ)
+                                                    Giá lẻ (đ) *
                                                 </label>
                                                 <Input
                                                     value={editRetail}
@@ -309,8 +333,8 @@ export function ProductDetailSheet({
                                                         whileTap={{ scale: 0.9 }}
                                                         onClick={() => setEditUnit(u)}
                                                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${editUnit === u
-                                                                ? "bg-primary text-primary-foreground shadow-sm"
-                                                                : "bg-muted text-muted-foreground hover:bg-accent"
+                                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                                            : "bg-muted text-muted-foreground hover:bg-accent"
                                                             }`}
                                                     >
                                                         {u}
@@ -322,7 +346,7 @@ export function ProductDetailSheet({
                                         {/* Location */}
                                         <div>
                                             <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                                                Vị trí kệ
+                                                Vị trí kệ (tùy chọn)
                                             </label>
                                             <Input
                                                 value={editLocation}
@@ -361,12 +385,6 @@ export function ProductDetailSheet({
                                                 {deleteConfirm ? "Chắc chắn?" : "Xóa"}
                                             </Button>
                                         </div>
-
-                                        {/* Barcode (read-only) */}
-                                        <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-                                            <Barcode className="w-3.5 h-3.5" />
-                                            <span className="font-mono">{product.barcode}</span>
-                                        </div>
                                     </motion.div>
                                 ) : (
                                     /* ═══════════════ VIEW MODE ═══════════════ */
@@ -381,15 +399,17 @@ export function ProductDetailSheet({
                                             {product.name}
                                         </h2>
 
-                                        <div className="flex items-center gap-2 mb-5">
+                                        <div className="flex items-center gap-2 mb-5 flex-wrap">
                                             <Badge variant="outline" className="gap-1 py-1">
                                                 <Package className="w-3 h-3" />
                                                 {product.unit}
                                             </Badge>
-                                            <Badge variant="secondary" className="gap-1 py-1">
-                                                <MapPin className="w-3 h-3 text-primary" />
-                                                {product.location}
-                                            </Badge>
+                                            {hasLocation && (
+                                                <Badge variant="secondary" className="gap-1 py-1">
+                                                    <MapPin className="w-3 h-3 text-primary" />
+                                                    {product.location}
+                                                </Badge>
+                                            )}
                                         </div>
 
                                         {/* Price section */}
@@ -430,36 +450,38 @@ export function ProductDetailSheet({
                                             </div>
                                         </div>
 
-                                        {/* Barcode */}
-                                        <div className="rounded-2xl bg-muted/40 p-4 mb-5">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                                        <Barcode className="w-5 h-5 text-primary" />
+                                        {/* Barcode — only show if exists */}
+                                        {product.barcode && (
+                                            <div className="rounded-2xl bg-muted/40 p-4 mb-5">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                                            <Barcode className="w-5 h-5 text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/70">
+                                                                Mã vạch
+                                                            </p>
+                                                            <p className="font-mono text-sm font-semibold text-foreground">
+                                                                {product.barcode}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/70">
-                                                            Mã vạch
-                                                        </p>
-                                                        <p className="font-mono text-sm font-semibold text-foreground">
-                                                            {product.barcode}
-                                                        </p>
-                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        onClick={copyBarcode}
+                                                        className="rounded-xl"
+                                                    >
+                                                        {copied ? (
+                                                            <Check className="w-4 h-4 text-primary" />
+                                                        ) : (
+                                                            <Copy className="w-4 h-4" />
+                                                        )}
+                                                    </Button>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-sm"
-                                                    onClick={copyBarcode}
-                                                    className="rounded-xl"
-                                                >
-                                                    {copied ? (
-                                                        <Check className="w-4 h-4 text-primary" />
-                                                    ) : (
-                                                        <Copy className="w-4 h-4" />
-                                                    )}
-                                                </Button>
                                             </div>
-                                        </div>
+                                        )}
 
                                         {/* Actions row */}
                                         <div className="flex gap-2">

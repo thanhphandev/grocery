@@ -93,19 +93,20 @@ export function QuickAddOverlay({
     };
 
     const handleSave = async () => {
-        if (!name || !retailPrice || !barcodeInput) return;
+        // Only name and retail price are required — barcode is OPTIONAL
+        if (!name || !retailPrice) return;
 
         setSaving(true);
         try {
             await addProduct({
-                barcode: barcodeInput,
+                barcode: barcodeInput.trim() || undefined,
                 name,
                 prices: {
                     retail: Number(retailPrice),
                     wholesale: Number(wholesalePrice) || Number(retailPrice),
                 },
                 unit,
-                location: location || "Chưa xác định",
+                location: location.trim() || undefined,
                 image: imageUrl || undefined,
             });
             setSaved(true);
@@ -122,6 +123,9 @@ export function QuickAddOverlay({
         resetForm();
         onClose();
     };
+
+    // Determine if this is a "new barcode detected" or manual add
+    const isFromScanner = !!barcode;
 
     return (
         <AnimatePresence>
@@ -157,8 +161,8 @@ export function QuickAddOverlay({
                         <div className="px-5 pb-8 pt-2 relative">
                             {/* Header */}
                             <div className="flex items-center gap-3 mb-5">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${barcode ? "bg-warning/10" : "bg-primary/10"}`}>
-                                    {barcode ? (
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isFromScanner ? "bg-warning/10" : "bg-primary/10"}`}>
+                                    {isFromScanner ? (
                                         <AlertTriangle className="w-5 h-5 text-warning" />
                                     ) : (
                                         <Plus className="w-5 h-5 text-primary" />
@@ -166,10 +170,10 @@ export function QuickAddOverlay({
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-foreground text-base">
-                                        {barcode ? "Mã mới phát hiện" : "Thêm sản phẩm mới"}
+                                        {isFromScanner ? "Mã mới phát hiện" : "Thêm sản phẩm mới"}
                                     </h3>
                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                        {barcode ? "Sản phẩm chưa có trong hệ thống" : "Nhập thông tin sản phẩm"}
+                                        {isFromScanner ? "Sản phẩm chưa có trong hệ thống" : "Nhập thông tin sản phẩm"}
                                     </p>
                                 </div>
                             </div>
@@ -201,7 +205,6 @@ export function QuickAddOverlay({
                                             </svg>
                                         </motion.div>
                                         <p className="font-semibold text-foreground">Đã thêm thành công!</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Tự động đồng bộ lên server</p>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -283,13 +286,13 @@ export function QuickAddOverlay({
                                     />
                                 </div>
 
-                                {/* Barcode */}
+                                {/* Barcode — OPTIONAL */}
                                 <div>
                                     <label htmlFor="barcode-input" className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
                                         <Barcode className="w-3 h-3 inline mr-1 -mt-0.5" />
-                                        Mã vạch *
+                                        Mã vạch (tùy chọn)
                                     </label>
-                                    {barcode ? (
+                                    {isFromScanner ? (
                                         <Badge variant="secondary" className="font-mono text-sm py-1.5 px-3">
                                             {barcode}
                                         </Badge>
@@ -298,11 +301,9 @@ export function QuickAddOverlay({
                                             id="barcode-input"
                                             value={barcodeInput}
                                             onChange={(e) => setBarcodeInput(e.target.value)}
-                                            placeholder="Quét hoặc nhập mã vạch"
+                                            placeholder="Để trống nếu không có mã vạch"
                                             inputMode="numeric"
-                                            pattern="[0-9]*"
                                             className="h-11 rounded-xl font-mono"
-                                            autoFocus={!barcode}
                                         />
                                     )}
                                 </div>
@@ -317,7 +318,7 @@ export function QuickAddOverlay({
                                         onChange={(e) => setName(e.target.value)}
                                         placeholder="VD: Sữa Vinamilk 1L không đường"
                                         className="h-11 rounded-xl"
-                                        autoFocus={!!barcode}
+                                        autoFocus
                                     />
                                 </div>
 
@@ -365,8 +366,8 @@ export function QuickAddOverlay({
                                                 whileTap={{ scale: 0.9 }}
                                                 onClick={() => setUnit(u)}
                                                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${unit === u
-                                                        ? "bg-primary text-primary-foreground shadow-sm"
-                                                        : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                                                     }`}
                                             >
                                                 {u}
@@ -377,7 +378,7 @@ export function QuickAddOverlay({
 
                                 <div>
                                     <label htmlFor="product-location" className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                                        Vị trí kệ
+                                        Vị trí kệ (tùy chọn)
                                     </label>
                                     <Input
                                         id="product-location"
@@ -390,7 +391,7 @@ export function QuickAddOverlay({
 
                                 <Button
                                     onClick={handleSave}
-                                    disabled={!name || !retailPrice || !barcodeInput || saving || uploading}
+                                    disabled={!name || !retailPrice || saving || uploading}
                                     className="w-full h-12 rounded-xl font-semibold text-base gap-2 mt-1"
                                 >
                                     {saving ? (

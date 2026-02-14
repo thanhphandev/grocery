@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useTransition } from "react";
+import { useState, useCallback, useRef, useTransition } from "react";
 import { fastSearch } from "@/lib/search";
-import type { Product } from "@/lib/db";
+import type { Product } from "@/lib/types";
 
 export function useSearch() {
     const [query, setQuery] = useState("");
@@ -12,13 +12,21 @@ export function useSearch() {
     const [, startTransition] = useTransition();
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const queryRef = useRef("");
+    const initialLoadRef = useRef(false);
 
-    useEffect(() => {
-        fastSearch("").then((r) => {
-            setResults(r);
-            setIsReady(true);
-        });
+    // Initial load triggered on first render
+    const initSearch = useCallback(async () => {
+        if (initialLoadRef.current) return;
+        initialLoadRef.current = true;
+        const r = await fastSearch("");
+        setResults(r);
+        setIsReady(true);
     }, []);
+
+    // Auto-init on first use
+    if (!initialLoadRef.current) {
+        initSearch();
+    }
 
     const search = useCallback((searchQuery: string) => {
         setQuery(searchQuery);
@@ -27,12 +35,11 @@ export function useSearch() {
 
         if (debounceRef.current) clearTimeout(debounceRef.current);
 
-        // Instant search for barcode-like input (pure numbers)
-        const delay = /^\d+$/.test(searchQuery.trim()) ? 80 : 200;
+        // Faster debounce for barcode-like input
+        const delay = /^\d+$/.test(searchQuery.trim()) ? 100 : 250;
 
         debounceRef.current = setTimeout(async () => {
             const searchResults = await fastSearch(searchQuery);
-            // Only update if query hasn't changed during async search
             if (queryRef.current === searchQuery) {
                 startTransition(() => {
                     setResults(searchResults);
