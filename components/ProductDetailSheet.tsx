@@ -14,8 +14,11 @@ import {
     Trash2,
     Save,
     Loader2,
+    Camera,
+    Image as ImageIcon,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +41,11 @@ interface ProductDetailSheetProps {
     onDeleted?: () => void;
 }
 
+const UNITS = [
+    "Cái", "Lon", "Gói", "Chai", "Hộp", "Túi",
+    "Kg", "Lốc", "Bao", "Tuýp", "Thùng", "Lít",
+];
+
 export function ProductDetailSheet({
     product,
     isOpen,
@@ -57,22 +65,22 @@ export function ProductDetailSheet({
     const [editUnit, setEditUnit] = useState("");
     const [editLocation, setEditLocation] = useState("");
     const [editBarcode, setEditBarcode] = useState("");
+    const [editImage, setEditImage] = useState<string | undefined>(undefined);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     // Delete
     const [deleteConfirm, setDeleteConfirm] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const units = [
-        "Cái", "Lon", "Gói", "Chai", "Hộp", "Túi",
-        "Kg", "Lốc", "Bao", "Tuýp", "Thùng", "Lít",
-    ];
+    // File inputs
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (product && isOpen) {
-            if (product._id) {
-                isFavorite(product._id).then(setFav);
-            }
+            if (product._id) isFavorite(product._id).then(setFav);
             addHistory(product);
             setIsEditing(false);
             setDeleteConfirm(false);
@@ -88,6 +96,9 @@ export function ProductDetailSheet({
             setEditUnit(product.unit);
             setEditLocation(product.location || "");
             setEditBarcode(product.barcode || "");
+            setEditImage(product.image);
+            setImagePreview(product.image || null);
+            setIsUploading(false);
         }
     }, [isEditing, product]);
 
@@ -101,18 +112,68 @@ export function ProductDetailSheet({
 
     if (!product) return null;
 
+    // ─── Image upload handler ────────────────────────────────
+
+    const handleImageFile = async (file: File) => {
+        setIsUploading(true);
+
+        // Show instant preview
+        const reader = new FileReader();
+        reader.onload = (e) => setImagePreview(e.target?.result as string);
+        reader.readAsDataURL(file);
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            if (res.ok) {
+                const data = await res.json();
+                setEditImage(data.url);
+            } else {
+                toast.error("Lỗi tải ảnh lên");
+            }
+        } catch {
+            toast.error("Lỗi kết nối khi tải ảnh");
+        }
+        setIsUploading(false);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) handleImageFile(file);
+        e.target.value = ""; // reset so same file can be re-selected
+    };
+
+    const removeImage = () => {
+        setEditImage(undefined);
+        setImagePreview(null);
+    };
+
+    // ─── Actions ─────────────────────────────────────────────
+
     const copyBarcode = () => {
         if (!product.barcode) return;
         navigator.clipboard.writeText(product.barcode);
         setCopied(true);
+        toast.success("Đã sao chép mã vạch");
         setTimeout(() => setCopied(false), 1500);
     };
 
     const handleToggleFav = async () => {
         if (!product._id) return;
         setFavAnimating(true);
-        const result = await toggleFavorite(product._id);
-        setFav(result);
+        // Optimistic update
+        setFav(!fav);
+
+        try {
+            const result = await toggleFavorite(product._id);
+            setFav(result); // Sync with server result
+            if (result) toast.success("Đã thêm vào yêu thích");
+            else toast.info("Đã bỏ yêu thích");
+        } catch {
+            setFav(!fav); // Revert
+            toast.error("Lỗi kết nối");
+        }
         setTimeout(() => setFavAnimating(false), 300);
     };
 
@@ -138,11 +199,13 @@ export function ProductDetailSheet({
                 },
                 unit: editUnit,
                 location: editLocation.trim() || undefined,
+                image: editImage,
             });
             setIsEditing(false);
             onUpdated?.();
+            toast.success("Đã cập nhật sản phẩm");
         } catch {
-            // silent
+            toast.error("Không thể cập nhật. Vui lòng thử lại.");
         }
         setIsSaving(false);
     };
@@ -158,8 +221,9 @@ export function ProductDetailSheet({
             await deleteProduct(product._id);
             onClose();
             onDeleted?.();
+            toast.success("Đã xóa sản phẩm");
         } catch {
-            // silent
+            toast.error("Không thể xóa sản phẩm");
         }
         setIsDeleting(false);
         setDeleteConfirm(false);
@@ -169,7 +233,6 @@ export function ProductDetailSheet({
     const savingPercent = product.prices.retail > 0
         ? Math.round((savingAmount / product.prices.retail) * 100)
         : 0;
-
     const hasLocation = product.location && product.location.trim();
 
     return (
@@ -226,11 +289,8 @@ export function ProductDetailSheet({
                             <button
                                 type="button"
                                 onClick={() => {
-                                    if (isEditing) {
-                                        setIsEditing(false);
-                                    } else {
-                                        onClose();
-                                    }
+                                    if (isEditing) setIsEditing(false);
+                                    else onClose();
                                 }}
                                 className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-muted-foreground/20 transition-colors"
                             >
@@ -239,8 +299,8 @@ export function ProductDetailSheet({
                         </div>
 
                         <div className="px-5 pb-8 pt-1 overflow-y-auto max-h-[calc(90vh-40px)]">
-                            {/* Product image */}
-                            {product.image && (
+                            {/* Product image — view mode only (edit mode has its own) */}
+                            {!isEditing && product.image && (
                                 <div className="mb-4 rounded-2xl overflow-hidden bg-muted">
                                     <img
                                         src={product.image}
@@ -264,6 +324,92 @@ export function ProductDetailSheet({
                                         <div className="flex items-center gap-2 mb-1">
                                             <Pencil className="w-4 h-4 text-primary" />
                                             <span className="text-sm font-bold text-primary">Chỉnh sửa sản phẩm</span>
+                                        </div>
+
+                                        {/* ── Image upload ── */}
+                                        <div>
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
+                                                <Camera className="w-3 h-3 inline mr-1 -mt-0.5" />
+                                                Ảnh sản phẩm
+                                            </label>
+
+                                            {imagePreview ? (
+                                                <div className="relative rounded-xl overflow-hidden bg-muted group">
+                                                    <img
+                                                        src={imagePreview}
+                                                        alt="Preview"
+                                                        className="w-full h-36 object-cover"
+                                                    />
+                                                    {isUploading && (
+                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute top-2 right-2 flex gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                                                            title="Đổi ảnh"
+                                                        >
+                                                            <Camera className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={removeImage}
+                                                            className="w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                                                            title="Xóa ảnh"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                    {editImage && !isUploading && (
+                                                        <div className="absolute bottom-2 left-2">
+                                                            <Badge className="bg-success/90 text-white text-[10px]">
+                                                                ✓ Đã tải lên
+                                                            </Badge>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <motion.button
+                                                        type="button"
+                                                        whileTap={{ scale: 0.95 }}
+                                                        onClick={() => cameraInputRef.current?.click()}
+                                                        className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all"
+                                                    >
+                                                        <Camera className="w-5 h-5 text-muted-foreground" />
+                                                        <span className="text-xs font-medium text-muted-foreground">Chụp ảnh</span>
+                                                    </motion.button>
+                                                    <motion.button
+                                                        type="button"
+                                                        whileTap={{ scale: 0.95 }}
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all"
+                                                    >
+                                                        <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                                                        <span className="text-xs font-medium text-muted-foreground">Chọn ảnh</span>
+                                                    </motion.button>
+                                                </div>
+                                            )}
+
+                                            {/* Hidden file inputs */}
+                                            <input
+                                                ref={cameraInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                capture="environment"
+                                                onChange={handleFileChange}
+                                                className="hidden"
+                                            />
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleFileChange}
+                                                className="hidden"
+                                            />
                                         </div>
 
                                         {/* Name */}
@@ -326,7 +472,7 @@ export function ProductDetailSheet({
                                                 Đơn vị tính
                                             </label>
                                             <div className="flex flex-wrap gap-1.5">
-                                                {units.map((u) => (
+                                                {UNITS.map((u) => (
                                                     <motion.button
                                                         type="button"
                                                         key={u}
@@ -360,7 +506,7 @@ export function ProductDetailSheet({
                                         <div className="flex gap-2 pt-1">
                                             <Button
                                                 onClick={handleSave}
-                                                disabled={!editName.trim() || !editRetail.trim() || isSaving}
+                                                disabled={!editName.trim() || !editRetail.trim() || isSaving || isUploading}
                                                 className="flex-1 h-11 rounded-xl gap-2 font-semibold"
                                             >
                                                 {isSaving ? (

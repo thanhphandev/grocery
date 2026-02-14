@@ -10,15 +10,25 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const q = searchParams.get("q") || "";
         const exact = searchParams.get("exact");
+        const sortParam = searchParams.get("sort") || "newest";
         const trimmed = q.trim();
+
+        let sort: Record<string, 1 | -1> = { updatedAt: -1 };
+        switch (sortParam) {
+            case "price_asc": sort = { "prices.retail": 1 }; break;
+            case "price_desc": sort = { "prices.retail": -1 }; break;
+            case "name_asc": sort = { name: 1 }; break;
+            default: sort = { updatedAt: -1 }; break;
+        }
 
         // Empty query → return recent 30 products
         if (!trimmed) {
+            const total = await ProductModel.countDocuments();
             const products = await ProductModel.find()
-                .sort({ updatedAt: -1 })
+                .sort(sort)
                 .limit(30)
                 .lean();
-            return NextResponse.json({ products, count: products.length });
+            return NextResponse.json({ products, total });
         }
 
         // Exact barcode lookup
@@ -26,7 +36,7 @@ export async function GET(request: Request) {
             const product = await ProductModel.findOne({ barcode: trimmed }).lean();
             return NextResponse.json({
                 products: product ? [product] : [],
-                count: product ? 1 : 0,
+                total: product ? 1 : 0,
             });
         }
 
@@ -46,12 +56,15 @@ export async function GET(request: Request) {
             ],
         };
 
-        const products = await ProductModel.find(query)
-            .sort({ updatedAt: -1 })
-            .limit(30)
-            .lean();
+        const [total, products] = await Promise.all([
+            ProductModel.countDocuments(query),
+            ProductModel.find(query)
+                .sort(sort)
+                .limit(30)
+                .lean(),
+        ]);
 
-        return NextResponse.json({ products, count: products.length });
+        return NextResponse.json({ products, total });
     } catch (error) {
         return apiError(error);
     }

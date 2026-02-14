@@ -1,39 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getFavorites, toggleFavorite, formatPrice } from "@/lib/search";
+import { toggleFavorite, formatPrice } from "@/lib/search";
 import type { Product } from "@/lib/types";
 
 interface FavoritesViewProps {
     onProductClick?: (product: Product) => void;
 }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 export function FavoritesView({ onProductClick }: FavoritesViewProps) {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        loadFavorites();
-    }, []);
-
-    const loadFavorites = async () => {
-        setLoading(true);
-        const data = await getFavorites();
-        setProducts(data);
-        setLoading(false);
-    };
+    const { data, mutate, isLoading } = useSWR<{ products: Product[] }>("/api/favorites?list=1", fetcher);
+    const products = data?.products || [];
 
     const handleRemove = async (e: React.MouseEvent, productId: string) => {
         e.stopPropagation();
-        await toggleFavorite(productId);
-        setProducts((prev) => prev.filter((p) => p._id !== productId));
+
+        // Optimistic update
+        mutate({
+            products: products.filter((p) => p._id !== productId)
+        }, false);
+
+        try {
+            await toggleFavorite(productId);
+            toast.success("Đã bỏ yêu thích");
+        } catch {
+            mutate(); // Revert
+            toast.error("Lỗi khi cập nhật");
+        }
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -72,6 +75,7 @@ export function FavoritesView({ onProductClick }: FavoritesViewProps) {
                         return (
                             <motion.div
                                 key={product._id}
+                                layout
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}

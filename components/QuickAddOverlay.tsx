@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, AlertTriangle, Barcode, Camera, Image as ImageIcon, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -75,9 +76,11 @@ export function QuickAddOverlay({
             if (res.ok) {
                 const data = await res.json();
                 setImageUrl(data.url);
+            } else {
+                toast.error("Lỗi tải ảnh");
             }
         } catch {
-            // Keep preview even if upload fails
+            toast.error("Lỗi kết nối");
         }
         setUploading(false);
     };
@@ -113,9 +116,11 @@ export function QuickAddOverlay({
             setTimeout(() => {
                 resetForm();
                 onAdded();
+                toast.success("Đã thêm sản phẩm mới");
             }, 800);
-        } catch {
+        } catch (e: any) {
             setSaving(false);
+            toast.error(e.message || "Không thể thêm sản phẩm");
         }
     };
 
@@ -178,36 +183,7 @@ export function QuickAddOverlay({
                                 </div>
                             </div>
 
-                            {/* Success overlay */}
-                            <AnimatePresence>
-                                {saved && (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-card/95 rounded-t-3xl"
-                                    >
-                                        <motion.div
-                                            initial={{ scale: 0 }}
-                                            animate={{ scale: 1 }}
-                                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                            className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-3"
-                                        >
-                                            <svg className="w-8 h-8 text-success" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                                                <motion.path
-                                                    d="M5 13l4 4L19 7"
-                                                    initial={{ pathLength: 0 }}
-                                                    animate={{ pathLength: 1 }}
-                                                    transition={{ duration: 0.4, delay: 0.1 }}
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                />
-                                            </svg>
-                                        </motion.div>
-                                        <p className="font-semibold text-foreground">Đã thêm thành công!</p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+
 
                             {/* Form */}
                             <div className="space-y-3.5">

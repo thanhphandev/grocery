@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Plus } from "lucide-react";
+import { Zap, Plus, ArrowUpNarrowWide, ArrowDownNarrowWide, Clock, ArrowDownAZ } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/BottomNav";
 import { SearchBar } from "@/components/SearchBar";
@@ -15,12 +16,13 @@ import { ScannerModal } from "@/components/ScannerModal";
 import { HistoryView } from "@/components/HistoryView";
 import { FavoritesView } from "@/components/FavoritesView";
 import { SettingsView } from "@/components/SettingsView";
-import { useSearch } from "@/hooks/use-search";
+import { useSearch, type SortOption } from "@/hooks/use-search";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { getProductByBarcode, deleteProduct, getProductById } from "@/lib/search";
 import { playSuccessFeedback, playErrorFeedback } from "@/lib/feedback";
 import type { Product } from "@/lib/types";
 
+// ... (Theme logic unchanged)
 type ThemeMode = "light" | "dark" | "system";
 
 function applyTheme(mode: ThemeMode) {
@@ -38,8 +40,28 @@ const TAB_TITLES: Record<string, string> = {
   settings: "Cài đặt",
 };
 
+// Sort options config
+const SORT_OPTIONS: { id: SortOption; label: string; icon: any }[] = [
+  { id: "newest", label: "Mới nhất", icon: Clock },
+  { id: "price_asc", label: "Giá tăng", icon: ArrowUpNarrowWide },
+  { id: "price_desc", label: "Giá giảm", icon: ArrowDownNarrowWide },
+  { id: "name_asc", label: "Tên A-Z", icon: ArrowDownAZ },
+];
+
 export default function Home() {
-  const { query, results, isLoading, isReady, search, refresh } = useSearch();
+  const {
+    query,
+    results,
+    isLoading,
+    isValidating, // Add this
+    isReady,
+    search,
+    refresh,
+    removeOptimistically,
+    sortBy,
+    setSortBy
+  } = useSearch();
+
   const [activeTab, setActiveTab] = useState("search");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -49,7 +71,7 @@ export default function Home() {
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
 
-  // Apply theme once on mount — safe from SSR hydration mismatch
+  // Apply theme
   useEffect(() => {
     const saved = (localStorage.getItem("theme") as ThemeMode) || "light";
     setTheme(saved);
@@ -61,49 +83,49 @@ export default function Home() {
     applyTheme(mode);
   }, []);
 
-  // ─── Unified barcode handler (DRY) ──────────────────────
+  // ─── Unified barcode handler ────────────────────────────────
   const processBarcodeResult = useCallback(
     async (barcode: string, opts: { closeScanner?: boolean } = {}) => {
-      const product = await getProductByBarcode(barcode);
+      try {
+        const product = await getProductByBarcode(barcode);
 
-      if (product) {
-        playSuccessFeedback();
-        setScannedBarcode(barcode);
-        search(barcode);
-        setActiveTab("search");
+        if (product) {
+          playSuccessFeedback();
+          setScannedBarcode(barcode);
+          search(barcode); // Set search term to barcode
+          setActiveTab("search");
 
-        if (opts.closeScanner) setIsScannerOpen(false);
-        setSelectedProduct(product);
-        setIsDetailOpen(true);
+          if (opts.closeScanner) setIsScannerOpen(false);
+          setSelectedProduct(product);
+          setIsDetailOpen(true);
 
-        setTimeout(() => setScannedBarcode(null), 3000);
-      } else {
-        playErrorFeedback();
-        if (opts.closeScanner) setIsScannerOpen(false);
-        setUnknownBarcode(barcode);
-        setIsQuickAddOpen(true);
+          setTimeout(() => setScannedBarcode(null), 3000);
+        } else {
+          playErrorFeedback();
+          if (opts.closeScanner) setIsScannerOpen(false);
+          setUnknownBarcode(barcode);
+          setIsQuickAddOpen(true);
+          toast.info("Sản phẩm chưa có, hãy thêm mới!");
+        }
+      } catch {
+        toast.error("Lỗi khi tìm sản phẩm");
       }
     },
     [search]
   );
 
-  // HID scanner handler (background keyboard events)
-  const handleHidScan = useCallback(
-    (barcode: string) => processBarcodeResult(barcode),
-    [processBarcodeResult]
-  );
-
-  // Camera scanner handler
-  const handleCameraScan = useCallback(
-    (barcode: string) => processBarcodeResult(barcode, { closeScanner: true }),
-    [processBarcodeResult]
-  );
-
+  // Scanner hooks
   useBarcodeScanner({
-    onScan: handleHidScan,
+    onScan: useCallback((b) => processBarcodeResult(b), [processBarcodeResult]),
     enabled: !isScannerOpen && !isQuickAddOpen,
   });
 
+  const handleCameraScan = useCallback(
+    (b: string) => processBarcodeResult(b, { closeScanner: true }),
+    [processBarcodeResult]
+  );
+
+  // Actions
   const handleProductClick = useCallback((product: Product) => {
     setSelectedProduct(product);
     setIsDetailOpen(true);
@@ -111,10 +133,17 @@ export default function Home() {
 
   const handleDeleteProduct = useCallback(
     async (productId: string) => {
-      await deleteProduct(productId);
-      refresh();
+      removeOptimistically(productId); // Instant UI update
+      try {
+        await deleteProduct(productId);
+        refresh(); // Re-sync with server
+        toast.success("Đã xóa sản phẩm");
+      } catch {
+        refresh(); // Revert on error
+        toast.error("Không thể xóa");
+      }
     },
-    [refresh]
+    [refresh, removeOptimistically]
   );
 
   const openScanner = useCallback(() => setIsScannerOpen(true), []);
@@ -143,9 +172,9 @@ export default function Home() {
     refresh();
   }, [refresh]);
 
+  // Render
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="sticky top-0 z-40 px-4 pt-3 pb-2 bg-background/80 backdrop-blur-xl border-b border-border/40">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
@@ -164,16 +193,45 @@ export default function Home() {
         </div>
 
         {activeTab === "search" && (
-          <SearchBar
-            value={query}
-            onChange={search}
-            isLoading={isLoading}
-            resultCount={query ? results.length : undefined}
-          />
+          <>
+            <SearchBar
+              value={query}
+              onChange={search}
+              isLoading={isValidating} // Show spinner when verifying/searching
+              resultCount={undefined}
+            />
+
+            {/* Sort Chips & Count */}
+            <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
+              {/* Result count badge */}
+              {query && results.length > 0 && (
+                <div className="flex-shrink-0 px-2.5 py-1.5 bg-primary/10 rounded-full text-xs font-semibold text-primary">
+                  {results.length} KQ
+                </div>
+              )}
+
+              {SORT_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const active = sortBy === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => setSortBy(opt.id)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${active
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+                      }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </header>
 
-      {/* Main content */}
       <main className="flex-1 px-4 pt-4 pb-28 overflow-y-auto">
         <AnimatePresence mode="wait">
           {activeTab === "search" && (
@@ -217,47 +275,45 @@ export default function Home() {
           )}
 
           {activeTab === "history" && (
-            <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+            <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <HistoryView onProductClick={handleProductClick} />
             </motion.div>
           )}
 
           {activeTab === "favorites" && (
-            <motion.div key="favorites" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+            <motion.div key="favorites" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <FavoritesView onProductClick={handleProductClick} />
             </motion.div>
           )}
 
           {activeTab === "settings" && (
-            <motion.div key="settings" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <SettingsView theme={theme} onThemeChange={handleThemeChange} />
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* Floating Add button */}
+      {/* Floating button */}
       {activeTab === "search" && (
         <motion.div
           className="fixed right-4 bottom-24 z-40"
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.3, type: "spring", stiffness: 260, damping: 20 }}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          whileTap={{ scale: 0.9 }}
         >
           <Button
             onClick={openAddProduct}
             size="icon-lg"
-            className="w-12 h-12 rounded-2xl shadow-lg hover:shadow-xl transition-shadow"
+            className="w-14 h-14 rounded-full shadow-xl bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-7 h-7" />
           </Button>
         </motion.div>
       )}
 
-      {/* Bottom Navigation */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} onScanPress={openScanner} />
 
-      {/* Overlays */}
       <ProductDetailSheet
         product={selectedProduct}
         isOpen={isDetailOpen}

@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin", "vietnamese"],
+  display: "swap", // Improve font loading
 });
 
 export const metadata: Metadata = {
   title: "SPEED-PRICE | Tra cứu giá siêu tốc",
-  description:
-    "Ứng dụng tra cứu giá sản phẩm siêu tốc cho nhân viên bán hàng. Quét mã vạch hoặc tìm kiếm theo tên.",
+  description: "Ứng dụng tra cứu giá sản phẩm siêu tốc cho nhân viên bán hàng. Quét mã vạch hoặc tìm kiếm theo tên.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -38,8 +39,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased min-h-screen bg-background text-foreground`}>
         {children}
+        <Toaster position="top-center" richColors theme="system" closeButton />
       </body>
     </html>
   );

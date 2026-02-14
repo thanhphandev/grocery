@@ -2,6 +2,7 @@
 
 import { memo, useState, useRef, useCallback } from "react";
 import { MapPin, Package, Copy, Check, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Product } from "@/lib/types";
@@ -31,6 +32,7 @@ export const ProductCard = memo(function ProductCard({
         if (!product.barcode) return;
         navigator.clipboard.writeText(product.barcode);
         setCopied(true);
+        toast.success("Đã sao chép mã vạch");
         setTimeout(() => setCopied(false), 1500);
     }, [product.barcode]);
 

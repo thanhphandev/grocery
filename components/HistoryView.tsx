@@ -1,35 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, Trash2, ChevronRight, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getHistory, clearHistory, formatPrice, type HistoryEntry } from "@/lib/search";
+import { clearHistory, formatPrice, type HistoryEntry } from "@/lib/search";
 import type { Product } from "@/lib/types";
 
 interface HistoryViewProps {
     onProductClick?: (product: Product) => void;
 }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 export function HistoryView({ onProductClick }: HistoryViewProps) {
-    const [entries, setEntries] = useState<HistoryEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        loadHistory();
-    }, []);
-
-    const loadHistory = async () => {
-        setLoading(true);
-        const data = await getHistory();
-        setEntries(data as HistoryEntry[]);
-        setLoading(false);
-    };
+    const { data, mutate, isLoading } = useSWR<{ entries: HistoryEntry[] }>("/api/history", fetcher);
+    const entries = data?.entries || [];
 
     const handleClear = async () => {
-        await clearHistory();
-        setEntries([]);
+        try {
+            await clearHistory();
+            mutate({ entries: [] }, false); // Optimistic update
+            toast.success("Đã xóa lịch sử");
+        } catch {
+            mutate(); // Revert on error
+            toast.error("Lỗi khi xóa lịch sử");
+        }
     };
 
     const handleClick = (entry: HistoryEntry) => {
@@ -50,7 +48,7 @@ export function HistoryView({ onProductClick }: HistoryViewProps) {
         return `${days} ngày trước`;
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

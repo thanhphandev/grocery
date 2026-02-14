@@ -1,72 +1,78 @@
 "use client";
 
-import { useState, useCallback, useRef, useTransition } from "react";
-import { fastSearch } from "@/lib/search";
+import useSWR from "swr";
+import { useState, useEffect, useCallback } from "react";
 import type { Product } from "@/lib/types";
 
+export type SortOption = "newest" | "price_asc" | "price_desc" | "name_asc";
+
+interface SearchResult {
+    products: Product[];
+    total: number;
+}
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export function useSearch() {
-    const [query, setQuery] = useState("");
-    const [results, setResults] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isReady, setIsReady] = useState(false);
-    const [, startTransition] = useTransition();
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const queryRef = useRef("");
-    const initialLoadRef = useRef(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedTerm, setDebouncedTerm] = useState("");
+    const [sortBy, setSortBy] = useState<SortOption>("newest");
 
-    // Initial load triggered on first render
-    const initSearch = useCallback(async () => {
-        if (initialLoadRef.current) return;
-        initialLoadRef.current = true;
-        const r = await fastSearch("");
-        setResults(r);
-        setIsReady(true);
+    // Debounce search term
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedTerm(searchTerm);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const queryParams = new URLSearchParams({
+        q: debouncedTerm.trim(),
+        sort: sortBy,
+    });
+    const key = `/api/products?${queryParams.toString()}`;
+
+    const { data, error, isLoading, isValidating, mutate } = useSWR<SearchResult>(
+        key,
+        fetcher,
+        {
+            keepPreviousData: true,
+            revalidateOnFocus: false,
+            dedupingInterval: 2000,
+        }
+    );
+
+    const search = useCallback((query: string) => {
+        setSearchTerm(query);
     }, []);
 
-    // Auto-init on first use
-    if (!initialLoadRef.current) {
-        initSearch();
-    }
+    const refresh = useCallback(() => {
+        return mutate();
+    }, [mutate]);
 
-    const search = useCallback((searchQuery: string) => {
-        setQuery(searchQuery);
-        queryRef.current = searchQuery;
-        setIsLoading(true);
+    const removeOptimistically = useCallback((id: string) => {
+        mutate((current) => {
+            if (!current) return current;
+            return {
+                ...current,
+                products: current.products.filter((p) => p._id !== id),
+                total: Math.max(0, current.total - 1),
+            };
+        }, false);
+    }, [mutate]);
 
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-
-        // Faster debounce for barcode-like input
-        const delay = /^\d+$/.test(searchQuery.trim()) ? 100 : 250;
-
-        debounceRef.current = setTimeout(async () => {
-            const searchResults = await fastSearch(searchQuery);
-            if (queryRef.current === searchQuery) {
-                startTransition(() => {
-                    setResults(searchResults);
-                    setIsLoading(false);
-                });
-            }
-        }, delay);
-    }, []);
-
-    const searchImmediate = useCallback(async (searchQuery: string) => {
-        setQuery(searchQuery);
-        queryRef.current = searchQuery;
-        setIsLoading(true);
-        const searchResults = await fastSearch(searchQuery);
-        startTransition(() => {
-            setResults(searchResults);
-            setIsLoading(false);
-        });
-        return searchResults;
-    }, []);
-
-    const refresh = useCallback(async () => {
-        const searchResults = await fastSearch(queryRef.current);
-        startTransition(() => {
-            setResults(searchResults);
-        });
-    }, []);
-
-    return { query, results, isLoading, isReady, search, searchImmediate, refresh };
+    return {
+        query: searchTerm,
+        results: data?.products || [],
+        count: data?.total || 0,
+        isLoading,
+        isValidating,
+        isError: !!error,
+        isReady: !isLoading,
+        sortBy,
+        setSortBy,
+        search,
+        refresh,
+        removeOptimistically,
+    };
 }
