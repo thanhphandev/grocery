@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
+import { v2 as cloudinary } from "cloudinary";
+import { Readable } from "stream";
 
-// POST /api/upload — upload product image
+// POST /api/upload — upload to Cloudinary
 export async function POST(request: Request) {
     try {
+        // 1. Check Env
+        const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+        const apiKey = process.env.CLOUDINARY_API_KEY;
+        const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+        if (!cloudName || !apiKey || !apiSecret) {
+            throw new Error(
+                "Thiếu cấu hình Cloudinary (CLOUDINARY_CLOUD_NAME, ...). Vui lòng thêm vào .env"
+            );
+        }
+
+        // 2. Configure
+        cloudinary.config({
+            cloud_name: cloudName,
+            api_key: apiKey,
+            api_secret: apiSecret,
+            secure: true,
+        });
+
+        // 3. Parse File
         const formData = await request.formData();
         const file = formData.get("file") as File | null;
 
@@ -28,24 +48,28 @@ export async function POST(request: Request) {
             );
         }
 
+        // 4. Upload to Cloudinary via Stream
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Create uploads directory if needed
-        const uploadsDir = path.join(process.cwd(), "public", "uploads");
-        await mkdir(uploadsDir, { recursive: true });
+        const result = await new Promise<any>((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                { folder: "grocery-app" },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            );
+            // Convert buffer to stream and pipe
+            Readable.from(buffer).pipe(uploadStream);
+        });
 
-        // Generate unique filename
-        const ext = file.name.split(".").pop() || "jpg";
-        const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const filepath = path.join(uploadsDir, filename);
-
-        await writeFile(filepath, buffer);
-
-        const url = `/uploads/${filename}`;
-        return NextResponse.json({ url, filename }, { status: 201 });
+        return NextResponse.json(
+            { url: result.secure_url, filename: result.public_id },
+            { status: 201 }
+        );
     } catch (error) {
-        console.error("Upload error:", error);
+        console.error("Cloudinary upload error:", error);
         const message = error instanceof Error ? error.message : "Lỗi upload";
         return NextResponse.json({ error: message }, { status: 500 });
     }

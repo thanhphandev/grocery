@@ -57,7 +57,6 @@ export function ProductDetailSheet({
     const [copied, setCopied] = useState(false);
     const [fav, setFav] = useState(false);
     const [favAnimating, setFavAnimating] = useState(false);
-    const [imgError, setImgError] = useState(false);
 
     // Edit mode
     const [isEditing, setIsEditing] = useState(false);
@@ -534,8 +533,9 @@ export function ProductDetailSheet({
                                         exit={{ opacity: 0, x: 20 }}
                                         transition={{ duration: 0.2 }}
                                     >
+                                        {/* Compact Header: Image + Title */}
                                         <div className="flex gap-4 mb-5">
-                                            {product.image && !imgError && (
+                                            {product.image && (
                                                 <motion.div
                                                     initial={{ scale: 0.9, opacity: 0 }}
                                                     animate={{ scale: 1, opacity: 1 }}
@@ -547,14 +547,8 @@ export function ProductDetailSheet({
                                                         fill
                                                         className="object-cover"
                                                         sizes="96px"
-                                                        onError={() => setImgError(true)}
                                                     />
                                                 </motion.div>
-                                            )}
-                                            {(!product.image || imgError) && (
-                                                <div className="w-24 h-24 shrink-0 rounded-2xl bg-muted border border-border/50 shadow-sm flex items-center justify-center">
-                                                    <Package className="w-8 h-8 text-muted-foreground/20" />
-                                                </div>
                                             )}
 
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
