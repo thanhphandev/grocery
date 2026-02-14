@@ -1,25 +1,39 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Plus, ArrowUpNarrowWide, ArrowDownNarrowWide, Clock, ArrowDownAZ } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowDownAZ,
+  ArrowDownNarrowWide,
+  ArrowUpNarrowWide,
+  Clock,
+  Loader2,
+  Plus,
+  Wifi,
+  WifiOff,
+  Zap,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/BottomNav";
-import { SearchBar } from "@/components/SearchBar";
-import { ProductCard } from "@/components/ProductCard";
-import { ProductSkeleton } from "@/components/ProductSkeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { FavoritesView } from "@/components/FavoritesView";
+import { HistoryView } from "@/components/HistoryView";
+import { ProductCard } from "@/components/ProductCard";
 import { ProductDetailSheet } from "@/components/ProductDetailSheet";
+import { ProductSkeleton } from "@/components/ProductSkeleton";
 import { QuickAddOverlay } from "@/components/QuickAddOverlay";
 import { ScannerModal } from "@/components/ScannerModal";
-import { HistoryView } from "@/components/HistoryView";
-import { FavoritesView } from "@/components/FavoritesView";
+import { SearchBar } from "@/components/SearchBar";
 import { SettingsView } from "@/components/SettingsView";
-import { useSearch, type SortOption } from "@/hooks/use-search";
+import { Button } from "@/components/ui/button";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
-import { getProductByBarcode, deleteProduct, getProductById } from "@/lib/search";
-import { playSuccessFeedback, playErrorFeedback } from "@/lib/feedback";
+import { type SortOption, useSearch } from "@/hooks/use-search";
+import { playErrorFeedback, playSuccessFeedback } from "@/lib/feedback";
+import {
+  deleteProduct,
+  getProductByBarcode,
+  getProductById,
+} from "@/lib/search";
 import type { Product } from "@/lib/types";
 
 // ... (Theme logic unchanged)
@@ -29,7 +43,11 @@ function applyTheme(mode: ThemeMode) {
   const root = document.documentElement;
   if (mode === "dark") root.classList.add("dark");
   else if (mode === "light") root.classList.remove("dark");
-  else root.classList.toggle("dark", window.matchMedia("(prefers-color-scheme: dark)").matches);
+  else
+    root.classList.toggle(
+      "dark",
+      window.matchMedia("(prefers-color-scheme: dark)").matches,
+    );
   localStorage.setItem("theme", mode);
 }
 
@@ -53,13 +71,15 @@ export default function Home() {
     query,
     results,
     isLoading,
-    isValidating, // Add this
+    isValidating,
     isReady,
+    hasMore,
     search,
     refresh,
     removeOptimistically,
+    loadMore,
     sortBy,
-    setSortBy
+    setSortBy,
   } = useSearch();
 
   const [activeTab, setActiveTab] = useState("search");
@@ -70,6 +90,11 @@ export default function Home() {
   const [unknownBarcode, setUnknownBarcode] = useState("");
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [isOnline, setIsOnline] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Apply theme
   useEffect(() => {
@@ -77,6 +102,49 @@ export default function Home() {
     setTheme(saved);
     applyTheme(saved);
   }, []);
+
+  // Online/Offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success("Đã kết nối mạng", { duration: 2000 });
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.error("Mất kết nối mạng", { duration: 5000 });
+    };
+
+    setIsOnline(navigator.onLine);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !loadingMore &&
+          !isValidating
+        ) {
+          setLoadingMore(true);
+          loadMore().finally(() => setLoadingMore(false));
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore, loadingMore, isValidating]);
 
   const handleThemeChange = useCallback((mode: ThemeMode) => {
     setTheme(mode);
@@ -92,7 +160,7 @@ export default function Home() {
         if (product) {
           playSuccessFeedback();
           setScannedBarcode(barcode);
-          search(barcode); // Set search term to barcode
+          search(barcode);
           setActiveTab("search");
 
           if (opts.closeScanner) setIsScannerOpen(false);
@@ -111,7 +179,7 @@ export default function Home() {
         toast.error("Lỗi khi tìm sản phẩm");
       }
     },
-    [search]
+    [search],
   );
 
   // Scanner hooks
@@ -122,7 +190,7 @@ export default function Home() {
 
   const handleCameraScan = useCallback(
     (b: string) => processBarcodeResult(b, { closeScanner: true }),
-    [processBarcodeResult]
+    [processBarcodeResult],
   );
 
   // Actions
@@ -133,17 +201,17 @@ export default function Home() {
 
   const handleDeleteProduct = useCallback(
     async (productId: string) => {
-      removeOptimistically(productId); // Instant UI update
+      removeOptimistically(productId);
       try {
         await deleteProduct(productId);
-        refresh(); // Re-sync with server
+        refresh();
         toast.success("Đã xóa sản phẩm");
       } catch {
-        refresh(); // Revert on error
+        refresh();
         toast.error("Không thể xóa");
       }
     },
-    [refresh, removeOptimistically]
+    [refresh, removeOptimistically],
   );
 
   const openScanner = useCallback(() => setIsScannerOpen(true), []);
@@ -172,6 +240,11 @@ export default function Home() {
     refresh();
   }, [refresh]);
 
+  // Pull to refresh
+  const handlePullRefresh = useCallback(() => {
+    refresh();
+  }, [refresh]);
+
   // Render
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -190,6 +263,23 @@ export default function Home() {
               </p>
             </div>
           </div>
+
+          {/* Connection status indicator */}
+          <AnimatePresence>
+            {!isOnline && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/10 border border-destructive/20"
+              >
+                <WifiOff className="w-3.5 h-3.5 text-destructive" />
+                <span className="text-[10px] font-semibold text-destructive">
+                  Offline
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {activeTab === "search" && (
@@ -197,7 +287,7 @@ export default function Home() {
             <SearchBar
               value={query}
               onChange={search}
-              isLoading={isValidating} // Show spinner when verifying/searching
+              isLoading={isValidating}
               resultCount={undefined}
             />
 
@@ -217,10 +307,11 @@ export default function Home() {
                   <button
                     key={opt.id}
                     onClick={() => setSortBy(opt.id)}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${active
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
-                      }`}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+                    }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                     {opt.label}
@@ -260,6 +351,22 @@ export default function Home() {
                       onDelete={handleDeleteProduct}
                     />
                   ))}
+
+                  {/* Infinite scroll sentinel */}
+                  {hasMore && (
+                    <div ref={sentinelRef} className="flex justify-center py-4">
+                      {loadingMore && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="flex items-center gap-2 text-sm text-muted-foreground"
+                        >
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Đang tải thêm...
+                        </motion.div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <EmptyState
@@ -267,7 +374,11 @@ export default function Home() {
                   onScan={openScanner}
                   onAdd={openAddProduct}
                   onSearch={() => {
-                    document.querySelector<HTMLInputElement>('input[inputmode="search"]')?.focus();
+                    document
+                      .querySelector<HTMLInputElement>(
+                        'input[inputmode="search"]',
+                      )
+                      ?.focus();
                   }}
                 />
               )}
@@ -275,19 +386,34 @@ export default function Home() {
           )}
 
           {activeTab === "history" && (
-            <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div
+              key="history"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
               <HistoryView onProductClick={handleProductClick} />
             </motion.div>
           )}
 
           {activeTab === "favorites" && (
-            <motion.div key="favorites" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div
+              key="favorites"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
               <FavoritesView onProductClick={handleProductClick} />
             </motion.div>
           )}
 
           {activeTab === "settings" && (
-            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
               <SettingsView theme={theme} onThemeChange={handleThemeChange} />
             </motion.div>
           )}
@@ -312,7 +438,11 @@ export default function Home() {
         </motion.div>
       )}
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} onScanPress={openScanner} />
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onScanPress={openScanner}
+      />
 
       <ProductDetailSheet
         product={selectedProduct}
@@ -322,7 +452,11 @@ export default function Home() {
         onDeleted={handleDetailDeleted}
       />
 
-      <ScannerModal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} onScan={handleCameraScan} />
+      <ScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleCameraScan}
+      />
 
       <QuickAddOverlay
         barcode={unknownBarcode}

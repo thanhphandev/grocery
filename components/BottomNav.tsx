@@ -59,8 +59,8 @@ export function BottomNav({ activeTab, onTabChange, onScanPress }: BottomNavProp
                             whileTap={{ scale: 0.85 }}
                             onClick={() => onTabChange(tab.id)}
                             className={`flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors relative ${isActive
-                                    ? "text-primary"
-                                    : "text-muted-foreground hover:text-foreground"
+                                ? "text-primary"
+                                : "text-muted-foreground hover:text-foreground"
                                 }`}
                         >
                             {isActive && (
