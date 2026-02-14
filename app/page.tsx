@@ -17,7 +17,7 @@ import { FavoritesView } from "@/components/FavoritesView";
 import { SettingsView } from "@/components/SettingsView";
 import { useSearch } from "@/hooks/use-search";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
-import { getProductByBarcode, fullSync } from "@/lib/search";
+import { getProductByBarcode, fullSync, deleteProduct } from "@/lib/search";
 import { playSuccessFeedback, playErrorFeedback } from "@/lib/feedback";
 import type { Product } from "@/lib/db";
 
@@ -215,8 +215,8 @@ export default function Home() {
 
             <div
               className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold transition-colors ${isOnline
-                  ? "bg-success/10 text-success"
-                  : "bg-destructive/10 text-destructive"
+                ? "bg-success/10 text-success"
+                : "bg-destructive/10 text-destructive"
                 }`}
             >
               {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
@@ -291,6 +291,10 @@ export default function Home() {
                       index={index}
                       onClick={() => handleProductClick(product)}
                       isScanned={product.barcode === scannedBarcode}
+                      onDelete={async (barcode) => {
+                        await deleteProduct(barcode);
+                        refresh();
+                      }}
                     />
                   ))}
                 </div>
@@ -378,6 +382,20 @@ export default function Home() {
         product={selectedProduct}
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
+        onUpdated={() => {
+          refresh();
+          // Reload the updated product
+          if (selectedProduct) {
+            getProductByBarcode(selectedProduct.barcode).then((p) => {
+              if (p) setSelectedProduct(p);
+            });
+          }
+        }}
+        onDeleted={() => {
+          setIsDetailOpen(false);
+          setSelectedProduct(null);
+          refresh();
+        }}
       />
 
       <ScannerModal

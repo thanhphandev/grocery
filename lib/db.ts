@@ -35,6 +35,12 @@ const db = new Dexie("SpeedPriceDB") as Dexie & {
     favorites: EntityTable<FavoriteEntry, "id">;
 };
 
+// Version 1: original schema
+db.version(1).stores({
+    products: "++id, &barcode, searchSlug, updatedAt",
+});
+
+// Version 2: add history + favorites tables
 db.version(2).stores({
     products: "++id, &barcode, searchSlug, updatedAt",
     history: "++id, barcode, timestamp",

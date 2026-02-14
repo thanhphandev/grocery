@@ -22,6 +22,12 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const detectorRef = useRef<BarcodeDetector | null>(null);
     const rafRef = useRef<number>(0);
+    const isPausingRef = useRef(false);
+
+    // Keep ref in sync with state for the scan loop
+    useEffect(() => {
+        isPausingRef.current = isPausing;
+    }, [isPausing]);
 
     const startCamera = useCallback(async () => {
         try {
@@ -51,38 +57,47 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
         }
         if (rafRef.current) {
             cancelAnimationFrame(rafRef.current);
+            rafRef.current = 0;
         }
     }, []);
 
-    // Scan loop using BarcodeDetector API
-    const scanFrame = useCallback(async () => {
-        if (!videoRef.current || !detectorRef.current || isPausing) {
-            rafRef.current = requestAnimationFrame(scanFrame);
-            return;
-        }
+    // Stable scan loop using refs instead of state dependencies
+    const scanFrame = useCallback(() => {
+        const loop = async () => {
+            if (!videoRef.current || !detectorRef.current) {
+                rafRef.current = requestAnimationFrame(loop);
+                return;
+            }
 
-        try {
-            const barcodes = await detectorRef.current.detect(videoRef.current);
-            if (barcodes.length > 0) {
-                const code = barcodes[0].rawValue;
-                if (code && code !== lastCodeRef.current && !isPausing) {
-                    lastCodeRef.current = code;
-                    setIsPausing(true);
-                    onScan(code);
+            if (!isPausingRef.current) {
+                try {
+                    const barcodes = await detectorRef.current.detect(videoRef.current);
+                    if (barcodes.length > 0) {
+                        const code = barcodes[0].rawValue;
+                        if (code && code !== lastCodeRef.current && !isPausingRef.current) {
+                            lastCodeRef.current = code;
+                            isPausingRef.current = true;
+                            setIsPausing(true);
+                            onScan(code);
 
-                    // Continuous scan: pause 2s then resume
-                    setTimeout(() => {
-                        setIsPausing(false);
-                        lastCodeRef.current = "";
-                    }, 2000);
+                            // Continuous scan: pause 2s then resume
+                            setTimeout(() => {
+                                isPausingRef.current = false;
+                                setIsPausing(false);
+                                lastCodeRef.current = "";
+                            }, 2000);
+                        }
+                    }
+                } catch {
+                    // BarcodeDetector error, continue
                 }
             }
-        } catch {
-            // BarcodeDetector not supported, fall through
-        }
 
-        rafRef.current = requestAnimationFrame(scanFrame);
-    }, [isPausing, onScan]);
+            rafRef.current = requestAnimationFrame(loop);
+        };
+
+        rafRef.current = requestAnimationFrame(loop);
+    }, [onScan]);
 
     useEffect(() => {
         if (isOpen) {
@@ -93,10 +108,14 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
                 });
             }
             startCamera().then(() => {
-                rafRef.current = requestAnimationFrame(scanFrame);
+                scanFrame();
             });
         } else {
             stopCamera();
+            setIsPausing(false);
+            isPausingRef.current = false;
+            lastCodeRef.current = "";
+            setManualInput("");
         }
 
         return () => stopCamera();
@@ -134,12 +153,10 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
 
                                 {/* Viewfinder overlay */}
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    {/* Dark overlay with cutout */}
                                     <div className="absolute inset-0 bg-black/50" />
 
                                     {/* Scan area */}
                                     <div className="relative w-72 h-44 z-10">
-                                        {/* Corner markers */}
                                         <div className="absolute top-0 left-0 w-8 h-8 border-t-3 border-l-3 border-primary rounded-tl-lg" />
                                         <div className="absolute top-0 right-0 w-8 h-8 border-t-3 border-r-3 border-primary rounded-tr-lg" />
                                         <div className="absolute bottom-0 left-0 w-8 h-8 border-b-3 border-l-3 border-primary rounded-bl-lg" />
@@ -156,7 +173,6 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
                                             }}
                                         />
 
-                                        {/* Clear area inside viewfinder */}
                                         <div className="absolute inset-0 rounded-lg" style={{ boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)" }} />
                                     </div>
                                 </div>
@@ -199,7 +215,6 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
 
                     {/* Bottom controls */}
                     <div className="relative z-20 bg-black/90 backdrop-blur-lg border-t border-white/10 px-4 pt-4 safe-bottom">
-                        {/* Manual input */}
                         <div className="flex gap-2 mb-4">
                             <input
                                 ref={inputRef}

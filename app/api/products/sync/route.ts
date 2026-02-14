@@ -23,6 +23,7 @@ export async function POST(request: Request) {
             prices: { retail: number; wholesale: number };
             unit: string;
             location: string;
+            image?: string;
             updatedAt?: number;
         }
 
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
                         prices: p.prices,
                         unit: p.unit,
                         location: p.location,
+                        ...(p.image ? { image: p.image } : {}),
                         updatedAt: p.updatedAt || Date.now(),
                     },
                 },

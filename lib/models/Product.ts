@@ -57,8 +57,7 @@ const ProductSchema = new Schema<IProduct>(
     }
 );
 
-// Hashed index on barcode for faster lookups
-ProductSchema.index({ barcode: "hashed" });
+// Search slug text index for faster search
 
 export const ProductModel: mongoose.Model<IProduct> =
     mongoose.models.Product || mongoose.model<IProduct>("Product", ProductSchema);
