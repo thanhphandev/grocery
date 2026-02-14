@@ -25,6 +25,7 @@ export const ProductCard = memo(function ProductCard({
     onDelete,
 }: ProductCardProps) {
     const [copied, setCopied] = useState(false);
+    const [imgError, setImgError] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
     const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,15 +66,22 @@ export const ProductCard = memo(function ProductCard({
             <CardContent className="p-0">
                 <div className="flex">
                     {/* Product image thumbnail */}
-                    {product.image && (
+                    {/* Product image thumbnail */}
+                    {product.image && !imgError ? (
                         <div className="w-20 shrink-0 bg-muted relative">
                             <NextImage
                                 src={product.image}
                                 alt=""
                                 fill
+                                priority={index < 4}
                                 className="object-cover"
                                 sizes="80px"
+                                onError={() => setImgError(true)}
                             />
+                        </div>
+                    ) : (
+                        <div className="w-20 shrink-0 bg-muted flex items-center justify-center">
+                            <Package className="w-8 h-8 text-muted-foreground/20" />
                         </div>
                     )}
 

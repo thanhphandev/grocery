@@ -57,6 +57,7 @@ export function ProductDetailSheet({
     const [copied, setCopied] = useState(false);
     const [fav, setFav] = useState(false);
     const [favAnimating, setFavAnimating] = useState(false);
+    const [imgError, setImgError] = useState(false);
 
     // Edit mode
     const [isEditing, setIsEditing] = useState(false);
@@ -244,7 +245,7 @@ export function ProductDetailSheet({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+                        className="fixed inset-0 z-50 bg-black/80"
                         onClick={onClose}
                     />
 
@@ -533,9 +534,8 @@ export function ProductDetailSheet({
                                         exit={{ opacity: 0, x: 20 }}
                                         transition={{ duration: 0.2 }}
                                     >
-                                        {/* Compact Header: Image + Title */}
                                         <div className="flex gap-4 mb-5">
-                                            {product.image && (
+                                            {product.image && !imgError && (
                                                 <motion.div
                                                     initial={{ scale: 0.9, opacity: 0 }}
                                                     animate={{ scale: 1, opacity: 1 }}
@@ -547,8 +547,14 @@ export function ProductDetailSheet({
                                                         fill
                                                         className="object-cover"
                                                         sizes="96px"
+                                                        onError={() => setImgError(true)}
                                                     />
                                                 </motion.div>
+                                            )}
+                                            {(!product.image || imgError) && (
+                                                <div className="w-24 h-24 shrink-0 rounded-2xl bg-muted border border-border/50 shadow-sm flex items-center justify-center">
+                                                    <Package className="w-8 h-8 text-muted-foreground/20" />
+                                                </div>
                                             )}
 
                                             <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -571,36 +577,34 @@ export function ProductDetailSheet({
                                             </div>
                                         </div>
 
-                                        {/* Price section */}
-                                        <div className="rounded-2xl bg-muted/40 p-5 mb-5 relative overflow-hidden group">
-                                            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-
-                                            <div className="flex items-end justify-between mb-4 relative z-10">
+                                        {/* Price section - Clean & Simple */}
+                                        <div className="rounded-xl bg-muted/40 p-4 mb-4">
+                                            <div className="flex items-end justify-between mb-3">
                                                 <div>
-                                                    <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-muted-foreground/70 block mb-1">
+                                                    <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/70 block mb-1">
                                                         Giá bán lẻ
                                                     </span>
                                                     <div className="flex items-baseline gap-1">
-                                                        <span className="text-[40px] font-black leading-none tracking-tight price-gradient">
+                                                        <span className="text-4xl font-bold tracking-tight text-primary">
                                                             {formatPrice(product.prices.retail)}
                                                         </span>
-                                                        <span className="text-xl font-bold text-price/60">đ</span>
+                                                        <span className="text-lg font-bold text-muted-foreground">đ</span>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <Separator className="mb-4 bg-border/50 relative z-10" />
+                                            <Separator className="mb-3 bg-border/50" />
 
-                                            <div className="flex items-end justify-between relative z-10">
+                                            <div className="flex items-end justify-between">
                                                 <div>
-                                                    <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-muted-foreground/70 block mb-1">
+                                                    <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/70 block mb-1">
                                                         Giá sỉ
                                                     </span>
                                                     <div className="flex items-baseline gap-0.5">
-                                                        <span className="text-2xl font-bold text-price-wholesale tabular-nums">
+                                                        <span className="text-2xl font-bold text-foreground/80 tabular-nums">
                                                             {formatPrice(product.prices.wholesale)}
                                                         </span>
-                                                        <span className="text-base font-semibold text-price-wholesale/60">đ</span>
+                                                        <span className="text-sm font-semibold text-muted-foreground">đ</span>
                                                     </div>
                                                 </div>
                                                 {savingAmount > 0 && (
