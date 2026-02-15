@@ -56,6 +56,26 @@ const UNITS = [
   "Tuýp",
   "Thùng",
   "Lít",
+  "Vỉ",
+  "Cây",
+  "Thanh",
+  "Hũ",
+  "Bình",
+  "Gam",
+  "Mét",
+  "Cuộn",
+  "Đôi",
+  "Bộ",
+  "Ram",
+  "Bịch",
+  "Quyển",
+  "Tờ",
+  "Viên",
+  "Tép",
+  "Khay",
+  "Xấp",
+  "Ly",
+  "Can"
 ];
 
 export function ProductDetailSheet({
@@ -281,8 +301,8 @@ export function ProductDetailSheet({
                 whileTap={{ scale: 0.8 }}
                 onClick={handleToggleFav}
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${fav
-                    ? "text-yellow-500"
-                    : "text-muted-foreground hover:text-foreground"
+                  ? "text-yellow-500"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
               >
                 <motion.div
@@ -506,8 +526,8 @@ export function ProductDetailSheet({
                               whileTap={{ scale: 0.9 }}
                               onClick={() => setEditUnit(u)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${editUnit === u
-                                  ? "bg-primary text-primary-foreground shadow-sm"
-                                  : "bg-muted text-muted-foreground hover:bg-accent"
+                                ? "bg-primary text-primary-foreground shadow-sm"
+                                : "bg-muted text-muted-foreground hover:bg-accent"
                                 }`}
                             >
                               {u}
