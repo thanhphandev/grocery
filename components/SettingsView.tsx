@@ -17,12 +17,13 @@ import {
     Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { signOut, useSession } from "@/lib/auth-client";
+import { AlertTriangle, Trash2 } from "lucide-react";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -45,6 +46,37 @@ export function SettingsView({ theme, onThemeChange }: SettingsViewProps) {
         await signOut();
         router.replace("/login");
     };
+
+    const [resetConfirm, setResetConfirm] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+
+    const handleReset = async () => {
+        if (!resetConfirm) {
+            setResetConfirm(true);
+            return;
+        }
+
+        setIsResetting(true);
+        try {
+            const res = await fetch("/api/reset", { method: "DELETE" });
+            if (!res.ok) throw new Error("Reset failed");
+            toast.success("Đã xóa toàn bộ dữ liệu hệ thống");
+            setResetConfirm(false);
+            // Reload page to reflect empty state
+            window.location.reload();
+        } catch {
+            toast.error("Lỗi khi xóa dữ liệu");
+        }
+        setIsResetting(false);
+    };
+
+    // Auto-reset confirmation after 3s
+    useEffect(() => {
+        if (resetConfirm) {
+            const t = setTimeout(() => setResetConfirm(false), 3000);
+            return () => clearTimeout(t);
+        }
+    }, [resetConfirm]);
 
     const [exporting, setExporting] = useState(false);
     const [importing, setImporting] = useState(false);
@@ -288,6 +320,35 @@ export function SettingsView({ theme, onThemeChange }: SettingsViewProps) {
                         File CSV phải có các cột: Mã vạch, Tên, Giá lẻ, Giá sỉ, Đơn vị, Vị
                         trí, Ảnh URL
                     </p>
+                </CardContent>
+            </Card>
+
+            {/* Danger Zone */}
+            <Card className="border-destructive/20 bg-destructive/5">
+                <CardContent className="p-4">
+                    <h3 className="text-sm font-semibold text-destructive mb-3 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        Vùng nguy hiểm
+                    </h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                        Hành động này sẽ xóa toàn bộ sản phẩm, lịch sử và danh sách yêu thích. Không thể hoàn tác.
+                    </p>
+                    <Button
+                        variant={resetConfirm ? "destructive" : "outline"}
+                        onClick={handleReset}
+                        disabled={isResetting}
+                        className={`w-full h-11 rounded-xl gap-2 font-semibold text-sm ${resetConfirm
+                            ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            : "text-destructive border-destructive/20 hover:bg-destructive/10"
+                            }`}
+                    >
+                        {isResetting ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Trash2 className="w-4 h-4" />
+                        )}
+                        {resetConfirm ? "Xác nhận xóa sạch dữ liệu?" : "Xóa toàn bộ dữ liệu"}
+                    </Button>
                 </CardContent>
             </Card>
 

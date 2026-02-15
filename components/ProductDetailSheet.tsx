@@ -280,11 +280,10 @@ export function ProductDetailSheet({
                 type="button"
                 whileTap={{ scale: 0.8 }}
                 onClick={handleToggleFav}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                  fav
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${fav
                     ? "text-yellow-500"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 <motion.div
                   animate={favAnimating ? { scale: [1, 1.4, 1] } : {}}
@@ -487,27 +486,34 @@ export function ProductDetailSheet({
                       </div>
                     </div>
 
-                    {/* Unit chips */}
+                    {/* Unit inputs */}
                     <div>
-                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
                         Đơn vị tính
                       </label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {UNITS.map((u) => (
-                          <motion.button
-                            type="button"
-                            key={u}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setEditUnit(u)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                              editUnit === u
-                                ? "bg-primary text-primary-foreground shadow-sm"
-                                : "bg-muted text-muted-foreground hover:bg-accent"
-                            }`}
-                          >
-                            {u}
-                          </motion.button>
-                        ))}
+                      <div className="space-y-2">
+                        <Input
+                          value={editUnit}
+                          onChange={(e) => setEditUnit(e.target.value)}
+                          className="h-11 rounded-xl"
+                          placeholder="Nhập hoặc chọn đơn vị..."
+                        />
+                        <div className="flex flex-wrap gap-1.5">
+                          {UNITS.map((u) => (
+                            <motion.button
+                              type="button"
+                              key={u}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => setEditUnit(u)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${editUnit === u
+                                  ? "bg-primary text-primary-foreground shadow-sm"
+                                  : "bg-muted text-muted-foreground hover:bg-accent"
+                                }`}
+                            >
+                              {u}
+                            </motion.button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
