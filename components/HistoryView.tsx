@@ -102,7 +102,7 @@ export function HistoryView({ onProductClick }: HistoryViewProps) {
                             transition={{ delay: i * 0.03 }}
                         >
                             <Card
-                                className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all duration-150 active:scale-[0.99]"
+                                className="cursor-pointer hover:bg-muted/40 transition-colors duration-200"
                                 onClick={() => handleClick(entry)}
                             >
                                 <CardContent className="p-3.5 flex items-center gap-3">

@@ -243,15 +243,15 @@ export default function Home() {
   // Render
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-40 px-4 pt-3 pb-2 bg-background/80 backdrop-blur-xl border-b border-border/40">
+      <header className="sticky top-0 z-40 px-4 pt-3 pb-2 bg-background border-b border-border shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-sm">
               <Zap className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
               <h1 className="text-[15px] font-bold text-foreground leading-none tracking-tight">
-                SPEED-PRICE
+                Tạp Hóa Kênh 3
               </h1>
               <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
                 {TAB_TITLES[activeTab] || TAB_TITLES.search}
@@ -260,21 +260,14 @@ export default function Home() {
           </div>
 
           {/* Connection status indicator */}
-          <AnimatePresence>
-            {!isOnline && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/10 border border-destructive/20"
-              >
-                <WifiOff className="w-3.5 h-3.5 text-destructive" />
-                <span className="text-[10px] font-semibold text-destructive">
-                  Offline
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {!isOnline && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/10 border border-destructive/20 animate-fade-in">
+              <WifiOff className="w-3.5 h-3.5 text-destructive" />
+              <span className="text-[10px] font-semibold text-destructive">
+                Offline
+              </span>
+            </div>
+          )}
         </div>
 
         {activeTab === "search" && (
@@ -302,9 +295,9 @@ export default function Home() {
                   <button
                     key={opt.id}
                     onClick={() => setSortBy(opt.id)}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${active
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap border ${active
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
                       }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -318,118 +311,86 @@ export default function Home() {
       </header>
 
       <main className="flex-1 px-4 pt-4 pb-28 overflow-y-auto">
-        <AnimatePresence mode="wait">
-          {activeTab === "search" && (
-            <motion.div
-              key="search"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15 }}
-            >
-              {!isReady ? (
-                <div className="flex flex-col gap-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <ProductSkeleton key={`sk-${i}`} index={i} />
-                  ))}
-                </div>
-              ) : results.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {results.map((product, index) => (
-                    <ProductCard
-                      key={product._id || index}
-                      product={product}
-                      index={index}
-                      onClick={() => handleProductClick(product)}
-                      isScanned={product.barcode === scannedBarcode}
-                      onDelete={handleDeleteProduct}
-                    />
-                  ))}
+        {activeTab === "search" && (
+          <div className="animate-fade-in">
+            {!isReady ? (
+              <div className="flex flex-col gap-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <ProductSkeleton key={`sk-${i}`} index={i} />
+                ))}
+              </div>
+            ) : results.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {results.map((product, index) => (
+                  <ProductCard
+                    key={product._id || index}
+                    product={product}
+                    index={index}
+                    onClick={() => handleProductClick(product)}
+                    isScanned={product.barcode === scannedBarcode}
+                    onDelete={handleDeleteProduct}
+                  />
+                ))}
 
-                  {/* Infinite scroll sentinel */}
-                  {hasMore && (
-                    <div ref={sentinelRef} className="flex justify-center py-4">
-                      {loadingMore && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="flex items-center gap-2 text-sm text-muted-foreground"
-                        >
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Đang tải thêm...
-                        </motion.div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <EmptyState
-                  query={query}
-                  onScan={openScanner}
-                  onAdd={openAddProduct}
-                  onSearch={() => {
-                    document
-                      .querySelector<HTMLInputElement>(
-                        'input[inputmode="search"]',
-                      )
-                      ?.focus();
-                  }}
-                />
-              )}
-            </motion.div>
-          )}
+                {/* Infinite scroll sentinel */}
+                {hasMore && (
+                  <div ref={sentinelRef} className="flex justify-center py-4">
+                    {loadingMore && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Đang tải thêm...
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <EmptyState
+                query={query}
+                onScan={openScanner}
+                onAdd={openAddProduct}
+                onSearch={() => {
+                  document
+                    .querySelector<HTMLInputElement>(
+                      'input[inputmode="search"]',
+                    )
+                    ?.focus();
+                }}
+              />
+            )}
+          </div>
+        )}
 
-          {activeTab === "history" && (
-            <motion.div
-              key="history"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <HistoryView onProductClick={handleProductClick} />
-            </motion.div>
-          )}
+        {activeTab === "history" && (
+          <div className="animate-fade-in">
+            <HistoryView onProductClick={handleProductClick} />
+          </div>
+        )}
 
-          {activeTab === "favorites" && (
-            <motion.div
-              key="favorites"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <FavoritesView onProductClick={handleProductClick} />
-            </motion.div>
-          )}
+        {activeTab === "favorites" && (
+          <div className="animate-fade-in">
+            <FavoritesView onProductClick={handleProductClick} />
+          </div>
+        )}
 
-          {activeTab === "settings" && (
-            <motion.div
-              key="settings"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <SettingsView theme={theme} onThemeChange={handleThemeChange} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {activeTab === "settings" && (
+          <div className="animate-fade-in">
+            <SettingsView theme={theme} onThemeChange={handleThemeChange} />
+          </div>
+        )}
       </main>
 
       {/* Floating button */}
       {activeTab === "search" && (
-        <motion.div
-          className="fixed right-4 bottom-24 z-40"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileTap={{ scale: 0.9 }}
-        >
+        <div className="fixed right-4 bottom-24 z-40 animate-fade-in">
           <Button
             onClick={openAddProduct}
             size="icon-lg"
-            className="w-14 h-14 rounded-full shadow-xl bg-primary text-primary-foreground hover:bg-primary/90"
+            className="w-14 h-14 rounded-full shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-transform"
           >
             <Plus className="w-7 h-7" />
           </Button>
-        </motion.div>
+        </div>
       )}
 
       <BottomNav

@@ -57,28 +57,22 @@ export const ProductCard = memo(
       [showDelete, onDelete, product._id],
     );
 
-    const hasLocation = product.location && product.location.trim();
-
-    // Optimized thumbnail URL (80×80, compressed)
     const optimizedThumb = thumbnailUrl(product.image);
+    const hasLocation = product.location && product.location.trim() !== "";
 
     return (
       <Card
-        className={`group cursor-pointer overflow-hidden transition-shadow duration-150 hover:shadow-lg active:scale-[0.99] border-border/40 ${
-          isScanned
-            ? "ring-2 ring-primary shadow-lg glow-primary"
-            : "hover:border-primary/30"
-        }`}
+        className={`group cursor-pointer overflow-hidden transition-colors duration-200 border-border ${isScanned
+          ? "bg-primary/5 ring-1 ring-primary border-primary"
+          : "hover:border-primary/50 hover:bg-muted/30"
+          }`}
         onClick={onClick}
-        style={{
-          animationDelay: `${Math.min(index * 30, 150)}ms`,
-        }}
       >
         <CardContent className="p-0">
           <div className="flex">
             {/* Product image thumbnail — optimized via Cloudinary transform */}
             {optimizedThumb && (
-              <div className="w-20 shrink-0 bg-muted relative">
+              <div className="w-20 shrink-0 bg-muted relative border-r border-border/50">
                 <NextImage
                   src={optimizedThumb}
                   alt=""
@@ -91,18 +85,18 @@ export const ProductCard = memo(
               </div>
             )}
 
-            <div className="flex-1 p-4 min-w-0">
+            <div className="flex-1 p-3.5 min-w-0">
               {/* Top row */}
-              <div className="flex items-start justify-between gap-2 mb-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-[15px] leading-tight text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                  <h3 className="font-semibold text-[15px] leading-tight text-foreground line-clamp-2">
                     {product.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-1.5">
                     {product.barcode && (
                       <Badge
                         variant="secondary"
-                        className="font-mono text-[11px] px-2 py-0.5 cursor-pointer hover:bg-primary/10 transition-colors"
+                        className="font-mono text-[10px] px-1.5 py-0.5 h-5 cursor-pointer hover:bg-muted-foreground/10 transition-colors border-transparent bg-muted"
                         onClick={copyBarcode}
                       >
                         {copied ? (
@@ -117,36 +111,36 @@ export const ProductCard = memo(
                 </div>
                 <Badge
                   variant="outline"
-                  className="shrink-0 text-[11px] gap-1 py-1"
+                  className="shrink-0 text-[10px] h-6 px-2 font-normal text-muted-foreground bg-background"
                 >
-                  <Package className="w-3 h-3" />
+                  <Package className="w-3 h-3 mr-1" />
                   {product.unit}
                 </Badge>
               </div>
 
               {/* Price row */}
-              <div className="flex items-end justify-between gap-4 mb-2.5">
+              <div className="flex items-end justify-between gap-4 mb-2">
                 <div className="flex-1">
-                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/70">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 block mb-0.5">
                     Giá bán lẻ
                   </span>
                   <div className="flex items-baseline gap-0.5">
-                    <span className="text-[32px] font-black leading-none tracking-tight price-gradient">
+                    <span className="text-[1.35rem] font-bold leading-none tracking-tight text-price">
                       {formatPrice(product.prices.retail)}
                     </span>
-                    <span className="text-lg font-bold text-price/70">đ</span>
+                    <span className="text-sm font-medium text-muted-foreground">đ</span>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/70">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 block mb-0.5">
                     Giá sỉ
                   </span>
                   <div className="flex items-baseline gap-0.5 justify-end">
-                    <span className="text-xl font-bold text-price-wholesale tabular-nums">
+                    <span className="text-base font-bold text-price-wholesale tabular-nums">
                       {formatPrice(product.prices.wholesale)}
                     </span>
-                    <span className="text-sm font-semibold text-price-wholesale/70">
+                    <span className="text-xs font-medium text-muted-foreground">
                       đ
                     </span>
                   </div>
@@ -154,10 +148,10 @@ export const ProductCard = memo(
               </div>
 
               {/* Location + Delete */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-1 border-t border-dashed border-border/60">
                 {hasLocation ? (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5 text-primary/70" />
+                    <MapPin className="w-3.5 h-3.5" />
                     <span className="font-medium">{product.location}</span>
                   </div>
                 ) : (
@@ -168,14 +162,13 @@ export const ProductCard = memo(
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-all duration-150 ${
-                      showDelete
-                        ? "bg-destructive text-white scale-105"
-                        : "text-muted-foreground/40 hover:text-destructive/60"
-                    }`}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${showDelete
+                      ? "bg-destructive text-destructive-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
                   >
-                    <Trash2 className="w-3 h-3" />
-                    {showDelete && "Xóa?"}
+                    <Trash2 className="w-3.5 h-3.5" />
+                    {showDelete ? "Xác nhận xóa" : "Xóa"}
                   </button>
                 )}
               </div>
@@ -185,9 +178,4 @@ export const ProductCard = memo(
       </Card>
     );
   },
-  (prev, next) =>
-    prev.product._id === next.product._id &&
-    prev.product.updatedAt === next.product.updatedAt &&
-    prev.isScanned === next.isScanned &&
-    prev.index === next.index,
 );

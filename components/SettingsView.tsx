@@ -186,8 +186,8 @@ export function SettingsView({ theme, onThemeChange }: SettingsViewProps) {
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() => onThemeChange(t.mode)}
                                     className={`flex flex-col items-center justify-center gap-2 py-3 px-2 rounded-xl transition-all border ${theme === t.mode
-                                            ? "bg-primary/5 border-primary text-primary shadow-sm"
-                                            : "bg-card border-border hover:bg-muted/50 text-muted-foreground"
+                                        ? "bg-primary/5 border-primary text-primary shadow-sm"
+                                        : "bg-card border-border hover:bg-muted/50 text-muted-foreground"
                                         }`}
                                 >
                                     <Icon
@@ -335,7 +335,7 @@ export function SettingsView({ theme, onThemeChange }: SettingsViewProps) {
             {/* About */}
             <div className="px-4 py-6 text-center">
                 <p className="text-xs font-medium text-foreground/80 mb-1">
-                    SPEED-PRICE GROCERY
+                    Tạp Hóa Kênh 3 - Phan Văn Thành
                 </p>
                 <p className="text-[10px] text-muted-foreground">
                     Version 2.1.0 • Powered by MongoDB Atlas

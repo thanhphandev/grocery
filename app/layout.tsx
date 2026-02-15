@@ -10,13 +10,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SPEED-PRICE | Tra cứu giá siêu tốc",
+  title: "Tạp Hóa Kênh 3 - Phan Văn Thành",
   description: "Ứng dụng tra cứu giá sản phẩm siêu tốc cho nhân viên bán hàng. Quét mã vạch hoặc tìm kiếm theo tên.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SPEED-PRICE",
+    title: "Tạp Hóa Kênh 3",
   },
 };
 

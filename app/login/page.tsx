@@ -72,22 +72,6 @@ function LoginContent() {
             >
                 {/* Glassmorphism card */}
                 <div className="rounded-3xl p-8 bg-card/80 backdrop-blur-xl border border-border/50 shadow-2xl shadow-primary/5">
-                    {/* Logo */}
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{
-                            delay: 0.15,
-                            type: "spring",
-                            stiffness: 260,
-                            damping: 20,
-                        }}
-                        className="flex justify-center mb-6"
-                    >
-                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
-                            <Zap className="w-10 h-10 text-primary-foreground" />
-                        </div>
-                    </motion.div>
 
                     {/* Title */}
                     <motion.div
@@ -97,10 +81,10 @@ function LoginContent() {
                         className="text-center mb-8"
                     >
                         <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-1.5">
-                            SPEED-PRICE
+                            Tạp Hóa Kênh 3
                         </h1>
                         <p className="text-sm text-muted-foreground font-medium">
-                            Tra cứu giá sản phẩm siêu tốc
+                            Phan Văn Thành
                         </p>
                     </motion.div>
 

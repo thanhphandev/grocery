@@ -19,7 +19,6 @@ const ProductSchema = new Schema<IProduct>(
     barcode: {
       type: String,
       sparse: true,
-      unique: true,
       index: true,
     },
     name: {

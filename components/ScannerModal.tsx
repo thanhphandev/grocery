@@ -183,8 +183,8 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
                                         animate={isPausing ? { scale: [1, 1.05, 1] } : {}}
                                         transition={{ duration: 0.5 }}
                                         className={`px-4 py-1.5 rounded-full text-xs font-semibold ${isPausing
-                                                ? "bg-success/90 text-white"
-                                                : "bg-white/15 text-white backdrop-blur-sm"
+                                            ? "bg-success/90 text-white"
+                                            : "bg-black/60 text-white"
                                             }`}
                                     >
                                         <span className="flex items-center gap-1.5">
@@ -214,7 +214,7 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
                     </div>
 
                     {/* Bottom controls */}
-                    <div className="relative z-20 bg-black/90 backdrop-blur-lg border-t border-white/10 px-4 pt-4 safe-bottom">
+                    <div className="relative z-20 bg-black/90 border-t border-white/10 px-4 pt-4 safe-bottom">
                         <div className="flex gap-2 mb-4">
                             <input
                                 ref={inputRef}
@@ -241,7 +241,7 @@ export function ScannerModal({ isOpen, onClose, onScan }: ScannerModalProps) {
                     <button
                         type="button"
                         onClick={onClose}
-                        className="absolute top-4 right-4 z-30 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                        className="absolute top-4 right-4 z-30 w-10 h-10 rounded-full bg-black/50 border border-white/15 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
                     >
                         <X className="w-5 h-5" />
                     </button>
